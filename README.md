@@ -1,0 +1,77 @@
+# skills
+
+Personal skills collection for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli).
+
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+| `3gpp-reader` | Fetch and analyze 3GPP specs from ETSI to extract protocol header formats, field definitions, and bit layouts |
+| `rfc-reader` | Fetch and analyze RFC documents to extract protocol header formats, field definitions, and bit layouts |
+| `copilot` | Delegate tasks to GitHub Copilot CLI as a sub-agent |
+
+## Installation
+
+### Claude Code
+
+**From within a session:**
+
+```
+/plugin marketplace add higebu/skills
+/plugin install 3gpp-reader@higebu-skills
+/plugin install rfc-reader@higebu-skills
+/plugin install copilot@higebu-skills
+```
+
+**From the terminal:**
+
+```bash
+claude plugin marketplace add higebu/skills
+claude plugin install 3gpp-reader@higebu-skills
+claude plugin install rfc-reader@higebu-skills
+claude plugin install copilot@higebu-skills
+```
+
+Once installed, invoke skills as:
+
+```
+/3gpp-reader:read 29.281
+/rfc-reader:read 791
+/copilot:run <task description>
+```
+
+### GitHub Copilot CLI
+
+```bash
+copilot plugin marketplace add higebu/skills
+copilot plugin install 3gpp-reader@higebu-skills
+copilot plugin install rfc-reader@higebu-skills
+```
+
+## Prerequisites
+
+### 3gpp-reader
+
+Requires `pandoc` and `libreoffice`:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install pandoc libreoffice-writer
+
+# macOS
+brew install pandoc && brew install --cask libreoffice
+```
+
+### copilot
+
+Requires GitHub Copilot CLI:
+
+```bash
+# Windows
+winget install GitHub.Copilot
+
+# macOS/Linux
+brew install copilot-cli
+# or
+npm install -g @github/copilot
+```

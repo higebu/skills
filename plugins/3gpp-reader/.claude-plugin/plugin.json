@@ -1,0 +1,9 @@
+{
+  "name": "3gpp-reader",
+  "description": "Fetch and analyze 3GPP specs from ETSI to extract protocol header formats, field definitions, and bit layouts",
+  "version": "1.0.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills"
+}

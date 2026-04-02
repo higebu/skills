@@ -1,0 +1,29 @@
+{
+  "name": "higebu-skills",
+  "owner": {
+    "name": "higebu"
+  },
+  "metadata": {
+    "description": "higebu's personal skills collection"
+  },
+  "plugins": [
+    {
+      "name": "3gpp-reader",
+      "description": "Fetch and analyze 3GPP specs from ETSI to extract protocol header formats, field definitions, and bit layouts",
+      "version": "1.0.0",
+      "source": "./plugins/3gpp-reader"
+    },
+    {
+      "name": "rfc-reader",
+      "description": "Fetch and analyze RFC documents to extract protocol header formats, field definitions, and bit layouts",
+      "version": "1.0.0",
+      "source": "./plugins/rfc-reader"
+    },
+    {
+      "name": "copilot",
+      "description": "Delegate tasks to GitHub Copilot CLI as a sub-agent",
+      "version": "1.0.0",
+      "source": "./plugins/copilot"
+    }
+  ]
+}

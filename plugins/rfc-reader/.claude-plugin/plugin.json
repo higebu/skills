@@ -1,0 +1,9 @@
+{
+  "name": "rfc-reader",
+  "description": "Fetch and analyze RFC documents to extract protocol header formats, field definitions, and bit layouts",
+  "version": "1.0.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills"
+}

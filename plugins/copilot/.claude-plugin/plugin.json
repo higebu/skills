@@ -1,0 +1,9 @@
+{
+  "name": "copilot",
+  "description": "Delegate tasks to GitHub Copilot CLI as a sub-agent",
+  "version": "1.0.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills"
+}
