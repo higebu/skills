@@ -1,5 +1,5 @@
 ---
-name: patch-format-reviewer
+name: kernel-patch-format-reviewer
 description: Reviews a Linux kernel patch for compliance with Documentation/process/submitting-patches.rst — subject line, commit message, Signed-off-by chain, tags, splitting into one logical change per patch. Use when the user asks to review patch format, commit message, or submission readiness of a kernel patch.
 tools: Read, Bash, Grep, Glob, WebFetch
 model: sonnet

@@ -1,5 +1,5 @@
 ---
-name: coding-style-reviewer
+name: kernel-coding-style-reviewer
 description: Reviews a Linux kernel patch against Documentation/process/coding-style.rst — indentation, line length, brace placement, naming, comment style. Optionally runs scripts/checkpatch.pl. Use when the user asks to check kernel coding style or run a checkpatch-style review.
 tools: Read, Bash, Grep, Glob
 model: sonnet

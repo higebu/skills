@@ -1,5 +1,5 @@
 ---
-name: code-quality-reviewer
+name: kernel-code-quality-reviewer
 description: Reviews the code changes in a Linux kernel patch for correctness, locking, memory safety, error handling, endianness, and kernel API misuse. Use when the user asks to review the substance of a kernel patch (not its format or style).
 tools: Read, Bash, Grep, Glob, WebFetch
 model: sonnet
