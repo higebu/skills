@@ -24,6 +24,12 @@
       "description": "Delegate tasks to GitHub Copilot CLI as a sub-agent",
       "version": "1.0.0",
       "source": "./plugins/copilot"
+    },
+    {
+      "name": "kernel-patch-review",
+      "description": "Review Linux kernel patches against submitting-patches and coding-style guidelines using parallel sub-agents",
+      "version": "1.0.0",
+      "source": "./plugins/kernel-patch-review"
     }
   ]
 }

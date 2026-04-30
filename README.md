@@ -9,6 +9,7 @@ Personal skills collection for [Claude Code](https://docs.anthropic.com/en/docs/
 | `3gpp-reader` | Fetch and analyze 3GPP specs from ETSI to extract protocol header formats, field definitions, and bit layouts |
 | `rfc-reader` | Fetch and analyze RFC documents to extract protocol header formats, field definitions, and bit layouts |
 | `copilot` | Delegate tasks to GitHub Copilot CLI as a sub-agent |
+| `kernel-patch-review` | Review Linux kernel patches against submitting-patches and coding-style guidelines using parallel sub-agents |
 
 ## Installation
 
@@ -21,6 +22,7 @@ Personal skills collection for [Claude Code](https://docs.anthropic.com/en/docs/
 /plugin install 3gpp-reader@higebu-skills
 /plugin install rfc-reader@higebu-skills
 /plugin install copilot@higebu-skills
+/plugin install kernel-patch-review@higebu-skills
 ```
 
 **From the terminal:**
@@ -30,6 +32,7 @@ claude plugin marketplace add higebu/skills
 claude plugin install 3gpp-reader@higebu-skills
 claude plugin install rfc-reader@higebu-skills
 claude plugin install copilot@higebu-skills
+claude plugin install kernel-patch-review@higebu-skills
 ```
 
 Once installed, invoke skills as:
@@ -38,6 +41,7 @@ Once installed, invoke skills as:
 /3gpp-reader:read 29.281
 /rfc-reader:read 791
 /copilot:run <task description>
+/kernel-patch-review:review <patch | git ref>
 ```
 
 ### GitHub Copilot CLI

@@ -1,0 +1,13 @@
+{
+  "name": "kernel-patch-review",
+  "description": "Review Linux kernel patches against submitting-patches and coding-style guidelines using parallel sub-agents",
+  "version": "1.0.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills",
+  "license": "MIT",
+  "keywords": ["linux", "kernel", "patch", "review", "checkpatch"],
+  "agents": "agents/",
+  "skills": "skills/"
+}
