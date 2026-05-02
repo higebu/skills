@@ -81,6 +81,39 @@ function — a hunk in isolation rarely tells the whole story.
 - Kconfig dependencies declared; new modules have `MODULE_LICENSE`,
   `MODULE_AUTHOR`, `MODULE_DESCRIPTION`
 
+### Subsystem / sibling consistency
+A patch that adds parallel variants of an existing pattern (a new
+ingress/egress path, a new behavior in a table of behaviors, a new
+ioctl in an existing family) must match the conventions exercised by
+its siblings.  Asymmetry is a red flag even when each side is
+individually correct.
+
+- **Sibling guards / error paths**: when the new function mirrors an
+  existing one (e.g. `foo_v4()` next to `foo_v6()`, or `*_finish()`
+  variants in a behavior table), every guard, drop reason, and
+  unwind step should be present in both unless the asymmetry is
+  intentional and explained.  Concrete examples to look for:
+  `if (mtu && ...)` MTU/GSO checks, `pskb_may_pull` placement, the
+  set of `*_drop_reason` values used, `skb_cow_head` head reservation,
+  `skb_pull_rcsum` + `skb_reset_*_header` pairing,
+  `skb_set_transport_header` after pushing a new outer.
+- **skb cb writes**: when the same file already establishes a
+  pattern (local `cb` pointer vs direct `*_CB(skb)->field = ...`),
+  the new entry should follow it.  Long runs of `*_CB(skb)->...` are
+  almost always a missed local-pointer refactor.
+- **Helper reuse**: the patch should not re-implement a constant or
+  helper already provided in scope.  Grep the relevant headers for
+  defines (e.g. masks named `*_F_MASK`, status constants, magic
+  numbers) before accepting an inline literal.
+- **Extack / drop reason wording**: consistent with other entries in
+  the same file (`NL_SET_ERR_MSG_MOD` vs `NL_SET_ERR_MSG`, drop
+  reason name prefixes, the granularity at which a reason is
+  reported).
+- **Comment / code agreement**: when the diff edits a function but
+  not the comment above it, verify the comment still describes what
+  the code does.  Stale "copy inner DSCP" comments next to code that
+  copies the outer DSCP are common.
+
 ## Output format
 
 ```

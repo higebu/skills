@@ -82,6 +82,36 @@ output as the spine of your report.
 - `__init` / `__exit` annotations on init/exit code; `__initdata` for init
   data tables.
 
+### File-local consistency (beyond checkpatch)
+checkpatch enforces tree-wide rules but is blind to in-file conventions.
+Walk the surrounding code and flag deviations:
+
+- **Member alignment** in a struct definition: every member uses the
+  same separator between the type/name and the trailing comment
+  (typically a tab).  A new member that uses a single space when its
+  siblings use a tab is a real defect.
+- **Initializer alignment** in an array of designated initializers
+  (e.g. `nla_policy[]`, `seg6_action_table[]`): the new entries should
+  follow the same `[KEY] = VALUE` spacing as the surrounding entries.
+- **Magic numbers vs named constants**: before accepting an inline
+  hex/decimal literal, grep the relevant headers for an existing
+  `#define` (e.g. `~GTP1_F_MASK` instead of `0xF8` when
+  `GTP1_F_MASK` is in the included header).
+- **Macro variants**: a new call to `NL_SET_ERR_MSG` in a file that
+  otherwise uses `NL_SET_ERR_MSG_MOD` is a consistency violation;
+  the same applies to `dev_err` vs `pr_err`, `WARN_ONCE` vs
+  `WARN_ON_ONCE`, etc.
+- **Forward declarations**: if the file convention is "no forward
+  declarations" (every static function is defined before its use),
+  a newly added `static int foo(...);` declaration is a deviation
+  that requires either a justification comment or reordering.
+- **`__packed` / `__aligned` annotations**: `__packed` on a struct of
+  same-sized fields adds nothing and is misleading.  Only retain it
+  when the layout has mixed-size fields or crosses an ABI boundary.
+- **Header comment block style**: the new function's doc-comment
+  should match the rest of the file (kerneldoc `/**` vs plain
+  `/* */`, presence/absence of `Return:` line, etc.).
+
 ## Workflow
 
 1. If `scripts/checkpatch.pl` is reachable, run it on the patch:
