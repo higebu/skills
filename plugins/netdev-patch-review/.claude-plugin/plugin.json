@@ -1,0 +1,9 @@
+{
+  "name": "netdev-patch-review",
+  "description": "Review Linux kernel networking patches (net/, drivers/net/, skb_*, sockets) using the upstream masoncl/review-prompts/kernel checklist with the networking subsystem context auto-loaded.",
+  "version": "0.1.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills"
+}
