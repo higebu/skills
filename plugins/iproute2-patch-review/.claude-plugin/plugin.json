@@ -1,0 +1,9 @@
+{
+  "name": "iproute2-patch-review",
+  "description": "Review iproute2 patches using the upstream masoncl/review-prompts/iproute checklist (the same prompt netdev maintainers run manually).",
+  "version": "0.1.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills"
+}

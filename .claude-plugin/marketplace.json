@@ -30,6 +30,12 @@
       "description": "Review Linux kernel patches against submitting-patches and coding-style guidelines using parallel sub-agents",
       "version": "1.0.0",
       "source": "./plugins/kernel-patch-review"
+    },
+    {
+      "name": "iproute2-patch-review",
+      "description": "Review iproute2 patches using the upstream masoncl/review-prompts/iproute checklist (the same prompt netdev maintainers run manually).",
+      "version": "0.1.0",
+      "source": "./plugins/iproute2-patch-review"
     }
   ]
 }
