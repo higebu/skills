@@ -41,16 +41,30 @@ writable.
 ## Step 2: Resolve the per-session ID
 
 The SessionStart hook writes the current session's UUID to
-`$STATE_DIR/sessions/$PPID.sid`, where `$PPID` of any tool-call bash
-is the Claude Code process. Look it up there. Fall back to the
-machine-wide sid file if the session marker is missing (e.g. plugin
-was just installed without a fresh session start).
+`$STATE_DIR/sessions/<claude-pid>.sid`, where `<claude-pid>` is found
+by walking the parent process chain until reaching a process whose
+command is `claude` (or `*/claude`). Look it up the same way and
+fall back to the machine-wide sid file if no marker is found.
 
 ```bash
-SESSION_SID_FILE="$STATE_DIR/sessions/$PPID.sid"
-if [ -s "$SESSION_SID_FILE" ]; then
-  SID=$(cat "$SESSION_SID_FILE")
-else
+find_claude_pid() {
+  local pid=$$ cmd
+  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
+    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
+    case "$cmd" in
+      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
+    esac
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
+  done
+  return 1
+}
+
+SID=""
+if CLAUDE_PID=$(find_claude_pid); then
+  SESSION_SID_FILE="$STATE_DIR/sessions/$CLAUDE_PID.sid"
+  [ -s "$SESSION_SID_FILE" ] && SID=$(cat "$SESSION_SID_FILE")
+fi
+if [ -z "$SID" ]; then
   MACHINE_SID_FILE="$STATE_DIR/sid"
   [ -s "$MACHINE_SID_FILE" ] || uuidgen > "$MACHINE_SID_FILE"
   SID=$(cat "$MACHINE_SID_FILE")

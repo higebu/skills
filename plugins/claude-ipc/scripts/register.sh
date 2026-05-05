@@ -12,10 +12,26 @@ STATE_DIR="$HOME/.claude/claude-ipc"
 SESSIONS_DIR="$STATE_DIR/sessions"
 mkdir -p "$SESSIONS_DIR"
 
-# $PPID here is the Claude Code process that spawned this hook.
-# Tool-call bash subprocesses also see $PPID == claude pid, so they
-# can look up their own session_id via $SESSIONS_DIR/$PPID.sid.
-printf '%s\n' "$SID" > "$SESSIONS_DIR/$PPID.sid"
+# Walk up the parent chain to find the long-lived `claude` process
+# that owns this session. $PPID here is a short-lived intermediate
+# spawned by Claude to run the hook, so we cannot rely on it. Tool-
+# call bash subprocesses walk the same chain to find the same pid.
+find_claude_pid() {
+  local pid=$$
+  local cmd
+  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
+    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
+    case "$cmd" in
+      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
+    esac
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
+  done
+  return 1
+}
+CLAUDE_PID=$(find_claude_pid) || CLAUDE_PID=""
+if [ -n "$CLAUDE_PID" ]; then
+  printf '%s\n' "$SID" > "$SESSIONS_DIR/$CLAUDE_PID.sid"
+fi
 
 # Resolve message_file location (default or config override).
 CONFIG="$STATE_DIR/config"
