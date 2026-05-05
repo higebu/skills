@@ -34,18 +34,47 @@ PEERS="$PEERS_DIR/claude-ipc-peers.jsonl"
 LOCK="$PEERS.lock"
 touch "$PEERS" "$LOCK"
 
+# Walk up to find the long-lived `claude` process. Recording its pid
+# in the peer entry lets us drop /clear orphans on re-register: a
+# /clear changes session_id without firing SessionEnd, so the old
+# entry is otherwise undeletable. Same (host, claude_pid) means same
+# Claude process → safe to evict on re-register.
+find_claude_pid() {
+  local pid=$$ cmd
+  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
+    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
+    case "$cmd" in
+      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
+    esac
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
+  done
+  return 1
+}
+CLAUDE_PID=$(find_claude_pid 2>/dev/null) || CLAUDE_PID=""
+HOST=$(hostname)
+
 ENTRY=$(jq -cn \
   --arg ts   "$(date -u +%FT%TZ)" \
   --arg sid  "$SID" \
   --arg cwd  "$CWD" \
-  --arg host "$(hostname)" \
-  '{ts:$ts, sid:$sid, cwd:$cwd, host:$host}')
+  --arg host "$HOST" \
+  --arg pid  "$CLAUDE_PID" \
+  '{ts:$ts, sid:$sid, cwd:$cwd, host:$host, pid:$pid}')
 
 (
   flock 9
   TMP=$(mktemp)
   if [ -s "$PEERS" ]; then
-    jq -c --arg sid "$SID" 'select(.sid != $sid)' "$PEERS" > "$TMP" || true
+    # Drop entries with the same sid (idempotent re-register) AND
+    # entries with the same (host, pid) when pid is known
+    # (/clear orphans from the same Claude process).
+    jq -c \
+      --arg sid  "$SID" \
+      --arg host "$HOST" \
+      --arg pid  "$CLAUDE_PID" '
+      select(.sid != $sid)
+      | select($pid == "" or (.pid // "") != $pid or (.host // "") != $host)
+    ' "$PEERS" > "$TMP" || true
   fi
   printf '%s\n' "$ENTRY" >> "$TMP"
   mv "$TMP" "$PEERS"
