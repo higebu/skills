@@ -37,30 +37,32 @@ mkdir -p "$STATE_DIR"
 ## Step 2: Resolve the session ID and cursor
 
 ```bash
-# Per-session SID: walk the parent chain to find the claude process,
-# then look up its session marker. Fall back to machine-wide sid.
-find_claude_pid() {
-  local pid=$$ cmd
+# Find this Claude session's UUID. Try claude --resume cmdline first
+# (the session_id is right there), then a SessionStart hook marker
+# file keyed by the claude pid, then machine-wide sid as last resort.
+find_claude_sid() {
+  local pid=$$ cmd uuid
   while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
     cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
     case "$cmd" in
-      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
+      claude|claude\ *|*/claude|*/claude\ *)
+        uuid=$(printf '%s' "$cmd" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+        if [ -n "$uuid" ]; then printf '%s\n' "$uuid"; return 0; fi
+        if [ -s "$HOME/.claude/claude-ipc/sessions/$pid.sid" ]; then
+          cat "$HOME/.claude/claude-ipc/sessions/$pid.sid"; return 0
+        fi
+        return 1 ;;
     esac
     pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
   done
   return 1
 }
 
-SID=""
-if CLAUDE_PID=$(find_claude_pid); then
-  SESSION_SID_FILE="$STATE_DIR/sessions/$CLAUDE_PID.sid"
-  [ -s "$SESSION_SID_FILE" ] && SID=$(cat "$SESSION_SID_FILE")
-fi
-if [ -z "$SID" ]; then
+SID=$(find_claude_sid) || {
   MACHINE_SID_FILE="$STATE_DIR/sid"
   [ -s "$MACHINE_SID_FILE" ] || uuidgen > "$MACHINE_SID_FILE"
   SID=$(cat "$MACHINE_SID_FILE")
-fi
+}
 
 # Cursor is per-session: two sessions in the same cwd each maintain
 # their own read position so neither swallows the other's notifications.

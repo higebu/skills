@@ -74,12 +74,20 @@ CONFIG="$STATE_DIR/config"
 SID_FILE="$STATE_DIR/sid"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
 
-find_claude_pid() {
-  local pid=$$ cmd
+find_claude_sid_with_source() {
+  local pid=$$ cmd uuid
   while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
     cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
     case "$cmd" in
-      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
+      claude|claude\ *|*/claude|*/claude\ *)
+        uuid=$(printf '%s' "$cmd" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+        if [ -n "$uuid" ]; then
+          printf '%s\t%s\n' "$uuid" "(claude --resume cmdline, pid $pid)"; return 0
+        fi
+        if [ -s "$HOME/.claude/claude-ipc/sessions/$pid.sid" ]; then
+          printf '%s\t%s\n' "$(cat "$HOME/.claude/claude-ipc/sessions/$pid.sid")" "(SessionStart hook marker, claude pid $pid)"; return 0
+        fi
+        return 1 ;;
     esac
     pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
   done
@@ -88,20 +96,14 @@ find_claude_pid() {
 
 SID=""
 SID_SOURCE=""
-if CLAUDE_PID=$(find_claude_pid); then
-  SESSION_SID_FILE="$STATE_DIR/sessions/$CLAUDE_PID.sid"
-  if [ -s "$SESSION_SID_FILE" ]; then
-    SID=$(cat "$SESSION_SID_FILE")
-    SID_SOURCE="(this session, set by SessionStart hook for claude pid $CLAUDE_PID)"
-  fi
-fi
-if [ -z "$SID" ]; then
-  if [ -s "$SID_FILE" ]; then
-    SID=$(cat "$SID_FILE")
-    SID_SOURCE="(machine fallback)"
-  else
-    SID="(none — no session has started since install)"
-  fi
+if line=$(find_claude_sid_with_source); then
+  SID=${line%%$'\t'*}
+  SID_SOURCE=${line#*$'\t'}
+elif [ -s "$SID_FILE" ]; then
+  SID=$(cat "$SID_FILE")
+  SID_SOURCE="(machine fallback)"
+else
+  SID="(none — no session has started since install)"
 fi
 
 if [ -f "$CONFIG" ]; then
