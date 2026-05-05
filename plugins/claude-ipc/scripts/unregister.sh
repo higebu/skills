@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# Remove this Claude Code session from the claude-ipc peers file.
-# Invoked as a SessionEnd hook; reads JSON {session_id, ...} on stdin.
+# SessionEnd hook for claude-ipc — drop this session's peer entry
+# (best effort — keyed by claude_pid + host).
 set -euo pipefail
 
 INPUT=$(cat)
-SID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty')
-[ -n "$SID" ] || exit 0
+CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty')
 
 STATE_DIR="$HOME/.claude/claude-ipc"
 SESSIONS_DIR="$STATE_DIR/sessions"
 
-# Best-effort: drop the per-session marker file.
 find_claude_pid() {
   local pid=$$ cmd
   while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
@@ -23,7 +21,9 @@ find_claude_pid() {
   return 1
 }
 CLAUDE_PID=$(find_claude_pid 2>/dev/null) || CLAUDE_PID=""
-[ -n "$CLAUDE_PID" ] && rm -f "$SESSIONS_DIR/$CLAUDE_PID.sid" 2>/dev/null || true
+HOST=$(hostname)
+
+[ -n "$CLAUDE_PID" ] && rm -f "$SESSIONS_DIR/$CLAUDE_PID.name" 2>/dev/null || true
 
 CONFIG="$STATE_DIR/config"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
@@ -33,9 +33,7 @@ if [ -f "$CONFIG" ]; then
   MSGFILE="${MSGFILE/#\~/$HOME}"
 fi
 MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
-
-PEERS_DIR=$(dirname "$MSGFILE")
-PEERS="$PEERS_DIR/claude-ipc-peers.jsonl"
+PEERS="$(dirname "$MSGFILE")/claude-ipc-peers.jsonl"
 LOCK="$PEERS.lock"
 [ -f "$PEERS" ] || exit 0
 touch "$LOCK"
@@ -43,7 +41,13 @@ touch "$LOCK"
 (
   flock 9
   TMP=$(mktemp)
-  jq -c --arg sid "$SID" 'select(.sid != $sid)' "$PEERS" > "$TMP" || true
+  jq -c \
+    --arg host "$HOST" \
+    --arg pid  "$CLAUDE_PID" \
+    --arg cwd  "$CWD" '
+    select($pid == "" or (.host // "") != $host or (.pid // "") != $pid)
+    | select($cwd == "" or (.cwd // "") != $cwd or (.host // "") != $host or (.pid // "") != $pid)
+  ' "$PEERS" > "$TMP" || true
   mv "$TMP" "$PEERS"
 ) 9>"$LOCK"
 

@@ -45,8 +45,8 @@
     },
     {
       "name": "claude-ipc",
-      "description": "IPC between Claude Code instances via a shared JSONL file. Skills: config, send, recv, watch, history, peers.",
-      "version": "0.7.3",
+      "description": "Name-addressed IPC between Claude Code instances via a shared JSONL file. Skills: config, send, recv, watch, history, peers.",
+      "version": "0.8.0",
       "source": "./plugins/claude-ipc"
     }
   ]

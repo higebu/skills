@@ -45,9 +45,12 @@ Once installed, invoke skills as:
 /rfc-reader:read 791
 /copilot:run <task description>
 /kernel-patch-review:review <patch | git ref>
-/claude-ipc:config [shared-message-file-path]
-/claude-ipc:send <recipient-cwd> <message>
+/claude-ipc:config name <NAME>            # mandatory: name this cwd
+/claude-ipc:config message-file <PATH>    # optional: shared file for cross-host IPC
+/claude-ipc:send <recipient-name> <message>
 /claude-ipc:recv [--all]
+/claude-ipc:watch
+/claude-ipc:history [N|all]
 /claude-ipc:peers
 ```
 

@@ -1,145 +1,122 @@
 ---
 name: config
 description: >
-  Show or set claude-ipc's per-host configuration — primarily the
-  shared message file path. With no argument, prints current settings
-  (message_file, peers file, sid). With a path argument, writes
-  ~/.claude/claude-ipc/config to point message_file= at that path so
-  this Claude Code account can exchange messages with instances on
-  other hosts via NFS / sshfs / cloud storage. Trigger phrases:
-  "claude-ipc の設定を見せて", "claude-ipc を共有パスに切り替え",
-  "show claude ipc config", "configure shared message file",
-  "別ホストの Claude とつなぐ".
-argument-hint: "[shared-message-file-path]"
+  View or set claude-ipc configuration: this cwd's NAME (mandatory
+  for IPC) and the optional shared message_file path. Trigger
+  phrases: "claude-ipc の設定", "claude-ipc に名前を付ける",
+  "set claude-ipc name", "show claude ipc config",
+  "configure shared message file".
+argument-hint: "name <NAME>  |  message-file <PATH|default>  |  (no args = show)"
 allowed-tools: Bash, AskUserQuestion
 ---
 
-# Show or set claude-ipc configuration
+# View or set claude-ipc configuration
 
-Day-to-day usage requires no configuration: the SessionStart hook sets
-up state and registers this session in the peers list automatically,
-and the default message file lives at `~/.claude/messages.jsonl`. Use
-this skill when you want to see what is currently configured, or to
-switch the message file to a path on shared storage.
+`/claude-ipc:config` is the only setup the user has to do — give
+this working directory a short, memorable name. After that, peers
+can address it by that name.
 
-## Behaviour
+## Usage
 
-- **No argument** — print current settings and exit.
-- **Path argument** — write/replace `~/.claude/claude-ipc/config` to
-  set `message_file=<path>`. Run on every host that needs to talk
-  through that shared file.
-- **The literal word `default`** — remove any custom config and revert
-  to `~/.claude/messages.jsonl`.
+| Form | Effect |
+|------|--------|
+| `/claude-ipc:config` | Print current name + message_file + known peers |
+| `/claude-ipc:config name <NEW_NAME>` | Assign / rename this cwd |
+| `/claude-ipc:config message-file <PATH>` | Switch to a shared JSONL on that path |
+| `/claude-ipc:config message-file default` | Revert to `~/.claude/messages.jsonl` |
+
+`<NEW_NAME>` must match `[A-Za-z0-9_.-]+` (no spaces, no slashes). A
+good default is `basename "$PWD"`.
 
 ## Step 1: Verify dependencies
 
 ```bash
 command -v jq      >/dev/null || { echo "missing: jq";      exit 1; }
 command -v flock   >/dev/null || { echo "missing: flock";   exit 1; }
-command -v uuidgen >/dev/null || { echo "missing: uuidgen"; exit 1; }
+command -v sha1sum >/dev/null || { echo "missing: sha1sum"; exit 1; }
 ```
 
-## Step 2: Apply the requested change (if any)
-
-`PATH_ARG` below stands for the user's path argument literal — substitute
-it directly when assembling the bash. If the user passed nothing, skip
-this step entirely and go to Step 3.
+## Step 2: Resolve cwd-name file path
 
 ```bash
 STATE_DIR="$HOME/.claude/claude-ipc"
-mkdir -p "$STATE_DIR"
-CONFIG="$STATE_DIR/config"
+NAMES_DIR="$STATE_DIR/cwd-names"
+mkdir -p "$NAMES_DIR"
+CWD_HASH=$(printf '%s' "$PWD" | sha1sum | cut -c1-12)
+NAME_FILE="$NAMES_DIR/$CWD_HASH.name"
+```
 
-case '<PATH_ARG>' in
-  default)
-    rm -f "$CONFIG"
+## Step 3: Apply the requested change
+
+`<SUB>` is the user's first argument (`name`, `message-file`, or
+empty). `<ARG>` is the second argument. Substitute the literal
+values when assembling the bash command — do NOT keep the angle
+brackets.
+
+```bash
+case '<SUB>' in
+  name)
+    NEW='<ARG>'
+    [[ "$NEW" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "Invalid name: $NEW (allowed: [A-Za-z0-9_.-]+)" >&2; exit 1; }
+    printf '%s\n' "$NEW" > "$NAME_FILE"
+    echo "Set name=$NEW for cwd $PWD"
+    echo "(restart this Claude session — or run /claude-ipc:config — to refresh CLAUDE_IPC_NAME in your env)"
     ;;
-  *)
-    NEW_PATH='<PATH_ARG>'
-    NEW_PATH="${NEW_PATH/#\~/$HOME}"
-    printf 'message_file=%s\n' "$NEW_PATH" > "$CONFIG"
+  message-file)
+    CFG="$STATE_DIR/config"
+    case '<ARG>' in
+      default) rm -f "$CFG"; echo "Reverted to default ~/.claude/messages.jsonl" ;;
+      *)
+        P='<ARG>'
+        P="${P/#\~/$HOME}"
+        mkdir -p "$(dirname "$P")"
+        touch "$P" "$P.lock" || { echo "Cannot write to $P" >&2; exit 1; }
+        printf 'message_file=%s\n' "$P" > "$CFG"
+        echo "Set message_file=$P"
+        ;;
+    esac
     ;;
+  '') ;; # show only
+  *) echo "Unknown sub-command: <SUB>" >&2; exit 1 ;;
 esac
 ```
 
-After writing, also `mkdir -p "$(dirname "$NEW_PATH")"` and
-`touch "$NEW_PATH" "$NEW_PATH.lock"`. Refuse with a clear error if
-the new path is not writable.
-
-## Step 3: Print the current configuration
+## Step 4: Print current state
 
 ```bash
-STATE_DIR="$HOME/.claude/claude-ipc"
-CONFIG="$STATE_DIR/config"
-SID_FILE="$STATE_DIR/sid"
+NAME="(none — run /claude-ipc:config name <NAME>)"
+[ -s "$NAME_FILE" ] && NAME=$(cat "$NAME_FILE")
+
+CFG="$STATE_DIR/config"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
-
-find_claude_pid() {
-  local pid=$$ cmd
-  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
-    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
-    case "$cmd" in
-      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
-    esac
-    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
-  done
-  return 1
-}
-SID=""
-SID_SOURCE=""
-if [ -n "${CLAUDE_IPC_SID:-}" ]; then
-  SID="$CLAUDE_IPC_SID"
-  SID_SOURCE="(via \$CLAUDE_IPC_SID, set by SessionStart hook)"
-elif CLAUDE_PID=$(find_claude_pid); then
-  M="$STATE_DIR/sessions/$CLAUDE_PID.sid"
-  if [ -s "$M" ]; then
-    SID=$(cat "$M")
-    SID_SOURCE="(via marker file for claude pid $CLAUDE_PID)"
-  fi
-fi
-if [ -z "$SID" ]; then
-  if [ -s "$SID_FILE" ]; then
-    SID=$(cat "$SID_FILE")
-    SID_SOURCE="(machine fallback)"
-  else
-    SID="(none — no session has started since install)"
-  fi
-fi
-
-if [ -f "$CONFIG" ]; then
-  MSGFILE=$(sed -n 's/^message_file=//p' "$CONFIG" | head -1)
-  MSGFILE="${MSGFILE/#\~/$HOME}"
-  SOURCE="$CONFIG"
+if [ -f "$CFG" ]; then
+  MSGFILE=$(sed -n 's/^message_file=//p' "$CFG" | head -1); MSGFILE="${MSGFILE/#\~/$HOME}"
+  SRC="(from $CFG)"
 else
-  MSGFILE="$DEFAULT_MSGFILE"
-  SOURCE="(default)"
+  MSGFILE="$DEFAULT_MSGFILE"; SRC="(default)"
 fi
-PEERS="$(dirname "$MSGFILE")/claude-ipc-peers.jsonl"
+PEERS_FILE="$(dirname "$MSGFILE")/claude-ipc-peers.jsonl"
 PEER_COUNT=0
-[ -s "$PEERS" ] && PEER_COUNT=$(wc -l < "$PEERS")
+[ -s "$PEERS_FILE" ] && PEER_COUNT=$(wc -l < "$PEERS_FILE")
 
 cat <<EOF
 claude-ipc config:
-  cwd         : $PWD
-  sid         : $SID  $SID_SOURCE
-  message_file: $MSGFILE  (from $SOURCE)
-  peers_file  : $PEERS  ($PEER_COUNT active)
-
-Set a shared path: /claude-ipc:config /mnt/shared/messages.jsonl
-Revert to default: /claude-ipc:config default
-List active peers: /claude-ipc:peers
+  cwd          : $PWD
+  name         : $NAME
+  CLAUDE_IPC_NAME (env): ${CLAUDE_IPC_NAME:-(not exported in this shell)}
+  message_file : $MSGFILE  $SRC
+  peers_file   : $PEERS_FILE  ($PEER_COUNT peers)
 EOF
 ```
 
 ## Notes
 
-- The peers list is maintained automatically by SessionStart /
-  SessionEnd hooks shipped with this plugin. You never have to call
-  `/claude-ipc:config` just to appear in `/claude-ipc:peers`.
-- Per-host state (`sid`, `cursor-*`, `config`) lives in
-  `~/.claude/claude-ipc/` and is **never** placed on the shared
-  filesystem — each host needs its own.
-- For cross-host bridging, run `/claude-ipc:config <shared-path>` on
-  every participating host with the same path. The peers file
-  (`<dir>/claude-ipc-peers.jsonl`) and the lock file follow
-  `message_file` automatically.
+- The name lives in `~/.claude/claude-ipc/cwd-names/<sha1>.name`,
+  not in the project repo, so it is not accidentally committed.
+- The SessionStart hook reads the name on every Claude launch and
+  exports `CLAUDE_IPC_NAME` for tool calls (with a marker-file
+  fallback for Claude Code versions whose `CLAUDE_ENV_FILE`
+  propagation is broken).
+- For cross-host bridging, point `message-file` at a shared path
+  (NFS, sshfs, ...) and run `/claude-ipc:config message-file <path>`
+  on each host.

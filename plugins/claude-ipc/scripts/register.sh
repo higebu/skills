@@ -1,37 +1,37 @@
 #!/usr/bin/env bash
-# Register this Claude Code session in the claude-ipc peers file.
-# Invoked as a SessionStart hook; reads JSON {session_id, cwd, ...} on stdin.
+# SessionStart hook for claude-ipc.
+# - Looks up this cwd's user-assigned name.
+# - If a name is configured, registers it in the peers file and emits
+#   helpful context to the LLM.
+# - If no name is configured, emits an additionalContext nudge so the
+#   LLM tells the user to run /claude-ipc:config name <NAME>.
 set -euo pipefail
 
 INPUT=$(cat)
-SID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty')
 CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty')
-[ -n "$SID" ] && [ -n "$CWD" ] || exit 0
+[ -n "$CWD" ] || exit 0
 
 STATE_DIR="$HOME/.claude/claude-ipc"
-SESSIONS_DIR="$STATE_DIR/sessions"
-mkdir -p "$SESSIONS_DIR"
+NAMES_DIR="$STATE_DIR/cwd-names"
+mkdir -p "$NAMES_DIR"
 
-# Export the session_id into every subsequent Bash tool call via
-# the documented CLAUDE_ENV_FILE mechanism (SessionStart hook only).
-# https://code.claude.com/docs/en/hooks.md
-# Best-effort: not every Claude Code version honours this on hook
-# completion, so we also write a pid-keyed marker file below as a
-# robust fallback.
-if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-  # CLAUDE_ENV_FILE points at a *.sh script that Claude Code sources
-  # before tool calls. Use 'export' so the var actually reaches the
-  # subprocess env, not just the sourcing shell's local scope.
-  printf 'export CLAUDE_IPC_SID=%s\n' "$SID" >> "$CLAUDE_ENV_FILE"
+CWD_HASH=$(printf '%s' "$CWD" | sha1sum | cut -c1-12)
+NAME_FILE="$NAMES_DIR/$CWD_HASH.name"
+
+NAME=""
+if [ -s "$NAME_FILE" ]; then
+  NAME=$(head -1 "$NAME_FILE" | tr -d '\n')
 fi
 
-# One-line debug breadcrumb per fire so we can diagnose env-file
-# propagation issues without needing the user to dump env manually.
-{
-  printf '%s register sid=%s cwd=%s env_file=%s plugin_root=%s\n' \
-    "$(date -u +%FT%TZ)" "$SID" "$CWD" \
-    "${CLAUDE_ENV_FILE:-(unset)}" "${CLAUDE_PLUGIN_ROOT:-(unset)}"
-} >> "$STATE_DIR/hook.log"
+emit_context() {
+  jq -cn --arg ctx "$1" \
+    '{hookSpecificOutput:{hookEventName:"SessionStart", additionalContext:$ctx}}'
+}
+
+if [ -z "$NAME" ]; then
+  emit_context "claude-ipc is installed but this working directory has no name yet. Run \`/claude-ipc:config name <NAME>\` (e.g. \`name $(basename "$CWD")\`) before sending or receiving messages. cwd: $CWD"
+  exit 0
+fi
 
 # Resolve message_file location (default or config override).
 CONFIG="$STATE_DIR/config"
@@ -42,18 +42,13 @@ if [ -f "$CONFIG" ]; then
   MSGFILE="${MSGFILE/#\~/$HOME}"
 fi
 MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
-
 PEERS_DIR=$(dirname "$MSGFILE")
 mkdir -p "$PEERS_DIR"
 PEERS="$PEERS_DIR/claude-ipc-peers.jsonl"
 LOCK="$PEERS.lock"
 touch "$PEERS" "$LOCK"
 
-# Walk up to find the long-lived `claude` process. Recording its pid
-# in the peer entry lets us drop /clear orphans on re-register: a
-# /clear changes session_id without firing SessionEnd, so the old
-# entry is otherwise undeletable. Same (host, claude_pid) means same
-# Claude process → safe to evict on re-register.
+# Find the long-lived claude process (parent-chain walk).
 find_claude_pid() {
   local pid=$$ cmd
   while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
@@ -67,47 +62,63 @@ find_claude_pid() {
 }
 CLAUDE_PID=$(find_claude_pid 2>/dev/null) || CLAUDE_PID=""
 HOST=$(hostname)
+TS=$(date -u +%FT%TZ)
 
-# Marker file fallback so send/recv/config can still find the per-
-# session sid when CLAUDE_ENV_FILE did not propagate.
+# Export name into subsequent Bash tool calls (env file is *.sh that
+# Claude Code sources). We also write a marker file as a robust
+# fallback for Claude Code versions that don't honour CLAUDE_ENV_FILE.
+if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  printf 'export CLAUDE_IPC_NAME=%q\n' "$NAME" >> "$CLAUDE_ENV_FILE"
+  printf 'export CLAUDE_IPC_CWD=%q\n' "$CWD" >> "$CLAUDE_ENV_FILE"
+fi
 if [ -n "$CLAUDE_PID" ]; then
-  printf '%s\n' "$SID" > "$SESSIONS_DIR/$CLAUDE_PID.sid"
+  SESSIONS_DIR="$STATE_DIR/sessions"
+  mkdir -p "$SESSIONS_DIR"
+  printf '%s\n' "$NAME" > "$SESSIONS_DIR/$CLAUDE_PID.name"
+  # GC dead pid markers
+  for m in "$SESSIONS_DIR"/*.name; do
+    [ -e "$m" ] || break
+    base=$(basename "$m" .name)
+    case "$base" in *[!0-9]*) continue ;; esac
+    kill -0 "$base" 2>/dev/null || rm -f "$m"
+  done
 fi
 
-# Garbage-collect markers whose pid no longer exists (orphans from
-# crashed Claude sessions or pre-0.7.2 cached versions).
-for m in "$SESSIONS_DIR"/*.sid; do
-  [ -e "$m" ] || break
-  base=$(basename "$m" .sid)
-  case "$base" in *[!0-9]*) continue ;; esac
-  kill -0 "$base" 2>/dev/null || rm -f "$m"
-done
-
 ENTRY=$(jq -cn \
-  --arg ts   "$(date -u +%FT%TZ)" \
-  --arg sid  "$SID" \
+  --arg ts   "$TS" \
+  --arg name "$NAME" \
   --arg cwd  "$CWD" \
   --arg host "$HOST" \
   --arg pid  "$CLAUDE_PID" \
-  '{ts:$ts, sid:$sid, cwd:$cwd, host:$host, pid:$pid}')
+  '{ts:$ts, name:$name, cwd:$cwd, host:$host, pid:$pid}')
 
 (
   flock 9
   TMP=$(mktemp)
   if [ -s "$PEERS" ]; then
-    # Drop entries with the same sid (idempotent re-register) AND
-    # entries with the same (host, pid) when pid is known
-    # (/clear orphans from the same Claude process).
+    # Drop entries with the same (host, name) — same instance re-registering
+    # OR same (host, claude_pid) — /clear orphan from same Claude process.
     jq -c \
-      --arg sid  "$SID" \
+      --arg name "$NAME" \
       --arg host "$HOST" \
       --arg pid  "$CLAUDE_PID" '
-      select(.sid != $sid)
-      | select($pid == "" or (.pid // "") != $pid or (.host // "") != $host)
+      select((.host // "") != $host or (.name // "") != $name)
+      | select($pid == "" or (.host // "") != $host or (.pid // "") != $pid)
     ' "$PEERS" > "$TMP" || true
   fi
   printf '%s\n' "$ENTRY" >> "$TMP"
   mv "$TMP" "$PEERS"
 ) 9>"$LOCK"
+
+# Tell the LLM who it is and (briefly) who else is online.
+ALIVE=$(jq -rs --arg me "$NAME" \
+  '[.[] | select(.name != $me) | .name] | unique | join(", ")' "$PEERS")
+[ -z "$ALIVE" ] && ALIVE="(no other peers online)"
+emit_context "claude-ipc identity: name=$NAME, cwd=$CWD. Other peers online: $ALIVE. Send with /claude-ipc:send <name> <msg>; receive with /claude-ipc:recv or /claude-ipc:watch."
+
+{
+  printf '%s register name=%s cwd=%s pid=%s env_file=%s\n' \
+    "$TS" "$NAME" "$CWD" "$CLAUDE_PID" "${CLAUDE_ENV_FILE:-(unset)}"
+} >> "$STATE_DIR/hook.log"
 
 exit 0

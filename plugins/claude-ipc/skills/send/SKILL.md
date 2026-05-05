@@ -1,145 +1,89 @@
 ---
 name: send
 description: >
-  Send a message to another Claude Code instance running in a different
-  working directory by appending one JSON line to the shared message
-  file (default `~/.claude/messages.jsonl`, overridable via
-  `~/.claude/claude-ipc/config`). Use when the user asks "別の Claude
-  に伝えて", "他のエージェントにメッセージを送って", "send to another
-  Claude", or to coordinate work across parallel sessions.
-argument-hint: "<recipient-cwd> <message>"
+  Send a message to another Claude Code instance by its NAME (assigned
+  via /claude-ipc:config). Trigger phrases: "別のClaudeに伝えて",
+  "他のエージェントに送って", "send to another Claude".
+argument-hint: "<recipient-name> <message>"
 allowed-tools: Bash
 ---
 
-# Send a message to another Claude Code instance
+# Send a message to a named claude-ipc peer
 
-Append a single JSON line to the shared message JSONL.
-
-## Step 1: Resolve the message file
+## Step 1: Resolve message file + my name
 
 ```bash
 STATE_DIR="$HOME/.claude/claude-ipc"
-CONFIG="$STATE_DIR/config"
+CFG="$STATE_DIR/config"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
-
-if [ -f "$CONFIG" ]; then
-  MSGFILE=$(sed -n 's/^message_file=//p' "$CONFIG" | head -1)
-  MSGFILE="${MSGFILE/#\~/$HOME}"
+if [ -f "$CFG" ]; then
+  MSGFILE=$(sed -n 's/^message_file=//p' "$CFG" | head -1); MSGFILE="${MSGFILE/#\~/$HOME}"
 fi
 MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
-
 mkdir -p "$STATE_DIR" "$(dirname "$MSGFILE")"
 touch "$MSGFILE" "$MSGFILE.lock"
-```
 
-The SessionStart hook normally creates these directories and files
-already; this block is defensive in case the hook was disabled or
-this is the very first send before any session has registered.
-Suggest `/claude-ipc:config` only when the file turns out not to be
-writable.
-
-## Step 2: Resolve the per-session ID
-
-Three-tier resolution:
-
-1. `$CLAUDE_IPC_SID` env var, set by the SessionStart hook via
-   `CLAUDE_ENV_FILE` (works when Claude Code propagates the env file).
-2. Marker file `$STATE_DIR/sessions/<claude-pid>.sid` written by the
-   same hook, looked up by walking the parent chain to find the
-   `claude` process.
-3. Machine-wide sid (`$STATE_DIR/sid`).
-
-```bash
-SID="${CLAUDE_IPC_SID:-}"
-if [ -z "$SID" ]; then
-  find_claude_pid() {
-    local pid=$$ cmd
-    while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
-      cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
-      case "$cmd" in
-        claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
-      esac
-      pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
-    done
-    return 1
-  }
-  if CLAUDE_PID=$(find_claude_pid); then
-    M="$STATE_DIR/sessions/$CLAUDE_PID.sid"
-    [ -s "$M" ] && SID=$(cat "$M")
-  fi
-fi
-if [ -z "$SID" ]; then
-  MACHINE_SID_FILE="$STATE_DIR/sid"
-  [ -s "$MACHINE_SID_FILE" ] || uuidgen > "$MACHINE_SID_FILE"
-  SID=$(cat "$MACHINE_SID_FILE")
-fi
-```
-
-## Step 3: Validate inputs
-
-The user's slash-command arguments are:
-
-- The first argument is the recipient working directory. Normalize it
-  with `realpath -m -- <RECIPIENT>` so relative paths and trailing
-  slashes do not cause mismatches with the recipient's `$PWD`.
-- The remainder of the line is the message. Treat it as one literal
-  string; do not shell-interpret it. If the user wrapped it in quotes,
-  preserve them.
-- Reject empty arguments with a clear error
-  (`Usage: /claude-ipc:send <recipient-cwd> <message>`).
-
-When you assemble the bash command, substitute the actual values
-directly into shell-quoted variables — do **not** rely on positional
-parameters in the SKILL.md text (they get pre-resolved by the harness):
-
-```bash
-TO_CWD=$(realpath -m -- '<RECIPIENT_CWD>')
-MSG='<MESSAGE>'
-[ -n "$TO_CWD" ] && [ -n "$MSG" ] || {
-  echo "Usage: /claude-ipc:send <recipient-cwd> <message>" >&2
-  exit 1
+resolve_my_name() {
+  if [ -n "${CLAUDE_IPC_NAME:-}" ]; then printf '%s\n' "$CLAUDE_IPC_NAME"; return 0; fi
+  local pid=$$ cmd
+  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
+    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
+    case "$cmd" in
+      claude|claude\ *|*/claude|*/claude\ *)
+        local f="$STATE_DIR/sessions/$pid.name"
+        [ -s "$f" ] && cat "$f" && return 0
+        return 1 ;;
+    esac
+    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
+  done
+  # Last resort: cwd-names file
+  local h
+  h=$(printf '%s' "$PWD" | sha1sum | cut -c1-12)
+  [ -s "$STATE_DIR/cwd-names/$h.name" ] && cat "$STATE_DIR/cwd-names/$h.name"
 }
+FROM=$(resolve_my_name) || FROM=""
+[ -n "$FROM" ] || { echo "Error: this cwd has no claude-ipc name. Run /claude-ipc:config name <NAME> first." >&2; exit 1; }
 ```
 
-Replace `<RECIPIENT_CWD>` and `<MESSAGE>` with the user's values,
-single-quoted with any embedded single quotes escaped as `'\''`.
+## Step 2: Validate inputs
 
-## Step 4: Append the JSON line
-
-Build the JSON safely with `jq -cn` (so quotes, newlines, and unicode
-in `$MSG` are escaped correctly), then append under `flock` so
-concurrent senders cannot interleave.
+`<TO>` is the user's first argument (recipient name). `<MSG>` is the
+remainder (the message body, single literal string). Substitute when
+assembling the bash.
 
 ```bash
-TS=$(date -u +%FT%TZ)
+TO='<TO>'
+MSG='<MSG>'
+[ -n "$TO" ] && [ -n "$MSG" ] || {
+  echo "Usage: /claude-ipc:send <recipient-name> <message>" >&2; exit 1
+}
+[[ "$TO" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "Invalid recipient name: $TO" >&2; exit 1; }
+```
 
+## Step 3: Append the JSON line
+
+```bash
 ENTRY=$(jq -cn \
-  --arg ts   "$TS" \
-  --arg sid  "$SID" \
-  --arg from "$PWD" \
-  --arg to   "$TO_CWD" \
+  --arg ts   "$(date -u +%FT%TZ)" \
+  --arg from "$FROM" \
+  --arg fcwd "$PWD" \
+  --arg to   "$TO" \
   --arg msg  "$MSG" \
-  '{ts:$ts, session_id:$sid, from_cwd:$from, to_cwd:$to, msg:$msg}')
+  '{ts:$ts, from:$from, from_cwd:$fcwd, to:$to, msg:$msg}')
 
 ( flock 9; printf '%s\n' "$ENTRY" >> "$MSGFILE" ) 9>"$MSGFILE.lock"
+
+echo "Sent $FROM -> $TO via $MSGFILE"
+echo "  $MSG"
 ```
 
-## Step 5: Confirm
+## Step 4: Verify recipient exists (warn-only)
 
-Print a short confirmation so the user can see what was queued:
-
+```bash
+PEERS_FILE="$(dirname "$MSGFILE")/claude-ipc-peers.jsonl"
+if [ -s "$PEERS_FILE" ]; then
+  if ! jq -e --arg n "$TO" 'select(.name == $n)' "$PEERS_FILE" >/dev/null 2>&1; then
+    echo "(warning: no peer currently registered with name '$TO' — message stored anyway)" >&2
+  fi
+fi
 ```
-Sent to <TO_CWD> via <MSGFILE>:
-  <MSG>
-```
-
-## Notes
-
-- The message file is append-only for this skill. Never rewrite or
-  truncate it from inside a session.
-- If `$MSGFILE` is on a shared filesystem, `flock` is still used so
-  two instances on the same host cannot collide. Cross-host
-  serialization relies on the filesystem honoring `flock` (NFSv4 and
-  most modern shares do).
-- Recipient discovery is out of scope: the sender must already know
-  the recipient's working directory (absolute path).
