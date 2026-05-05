@@ -1,0 +1,12 @@
+{
+  "name": "claude-ipc",
+  "description": "Lightweight IPC between Claude Code instances via a shared JSONL file",
+  "version": "0.1.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills",
+  "license": "MIT",
+  "keywords": ["ipc", "coordination", "multi-agent"],
+  "skills": "skills/"
+}

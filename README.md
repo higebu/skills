@@ -10,6 +10,7 @@ Personal skills collection for [Claude Code](https://docs.anthropic.com/en/docs/
 | `rfc-reader` | Fetch and analyze RFC documents to extract protocol header formats, field definitions, and bit layouts |
 | `copilot` | Delegate tasks to GitHub Copilot CLI as a sub-agent |
 | `kernel-patch-review` | Review Linux kernel patches against submitting-patches and coding-style guidelines using parallel sub-agents |
+| `claude-ipc` | Lightweight IPC between Claude Code instances via a shared JSONL message file |
 
 ## Installation
 
@@ -23,6 +24,7 @@ Personal skills collection for [Claude Code](https://docs.anthropic.com/en/docs/
 /plugin install rfc-reader@higebu-skills
 /plugin install copilot@higebu-skills
 /plugin install kernel-patch-review@higebu-skills
+/plugin install claude-ipc@higebu-skills
 ```
 
 **From the terminal:**
@@ -33,6 +35,7 @@ claude plugin install 3gpp-reader@higebu-skills
 claude plugin install rfc-reader@higebu-skills
 claude plugin install copilot@higebu-skills
 claude plugin install kernel-patch-review@higebu-skills
+claude plugin install claude-ipc@higebu-skills
 ```
 
 Once installed, invoke skills as:
@@ -42,6 +45,9 @@ Once installed, invoke skills as:
 /rfc-reader:read 791
 /copilot:run <task description>
 /kernel-patch-review:review <patch | git ref>
+/claude-ipc:init [shared-message-file-path]
+/claude-ipc:send <recipient-cwd> <message>
+/claude-ipc:recv [--all]
 ```
 
 ### GitHub Copilot CLI
@@ -79,3 +85,20 @@ brew install copilot-cli
 # or
 npm install -g @github/copilot
 ```
+
+### claude-ipc
+
+Requires `jq`, `flock` (util-linux), and `uuidgen`:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get install jq util-linux uuid-runtime
+
+# macOS
+brew install jq util-linux ossp-uuid
+```
+
+To bridge instances on different hosts, point this instance at a
+shared message file (NFS, sshfs, Dropbox, git-annex, ...) by running
+`/claude-ipc:init <shared-path>` once per host. The default location
+is `~/.claude/messages.jsonl`, suitable for same-host, same-user use.

@@ -42,6 +42,12 @@
       "description": "Review Linux kernel networking patches (net/, drivers/net/, skb_*, sockets, including SRv6/seg6) using the upstream masoncl/review-prompts/kernel checklist with the networking subsystem context auto-loaded.",
       "version": "0.1.0",
       "source": "./plugins/netdev-patch-review"
+    },
+    {
+      "name": "claude-ipc",
+      "description": "Lightweight IPC between Claude Code instances via a shared JSONL message file (default ~/.claude/messages.jsonl, overridable via ~/.claude/claude-ipc/config for cross-host bridging).",
+      "version": "0.1.0",
+      "source": "./plugins/claude-ipc"
     }
   ]
 }
