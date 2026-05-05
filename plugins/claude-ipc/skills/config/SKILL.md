@@ -74,7 +74,17 @@ CONFIG="$STATE_DIR/config"
 SID_FILE="$STATE_DIR/sid"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
 
-[ -s "$SID_FILE" ] && SID=$(cat "$SID_FILE") || SID="(none — no session has started since install)"
+SESSION_SID_FILE="$STATE_DIR/sessions/$PPID.sid"
+if [ -s "$SESSION_SID_FILE" ]; then
+  SID=$(cat "$SESSION_SID_FILE")
+  SID_SOURCE="(this session, set by SessionStart hook)"
+elif [ -s "$SID_FILE" ]; then
+  SID=$(cat "$SID_FILE")
+  SID_SOURCE="(machine fallback)"
+else
+  SID="(none — no session has started since install)"
+  SID_SOURCE=""
+fi
 
 if [ -f "$CONFIG" ]; then
   MSGFILE=$(sed -n 's/^message_file=//p' "$CONFIG" | head -1)
@@ -91,7 +101,7 @@ PEER_COUNT=0
 cat <<EOF
 claude-ipc config:
   cwd         : $PWD
-  sid         : $SID
+  sid         : $SID  $SID_SOURCE
   message_file: $MSGFILE  (from $SOURCE)
   peers_file  : $PEERS  ($PEER_COUNT active)
 

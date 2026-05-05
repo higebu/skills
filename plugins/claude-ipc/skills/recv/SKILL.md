@@ -37,16 +37,19 @@ mkdir -p "$STATE_DIR"
 ## Step 2: Resolve the session ID and cursor
 
 ```bash
-SID_FILE="$STATE_DIR/sid"
-if [ ! -s "$SID_FILE" ]; then
-  uuidgen > "$SID_FILE"
+# Per-session SID via SessionStart hook marker; fall back to machine sid.
+SESSION_SID_FILE="$STATE_DIR/sessions/$PPID.sid"
+if [ -s "$SESSION_SID_FILE" ]; then
+  SID=$(cat "$SESSION_SID_FILE")
+else
+  MACHINE_SID_FILE="$STATE_DIR/sid"
+  [ -s "$MACHINE_SID_FILE" ] || uuidgen > "$MACHINE_SID_FILE"
+  SID=$(cat "$MACHINE_SID_FILE")
 fi
-SID=$(cat "$SID_FILE")
 
-# Per-cwd cursor (not per-sid) so two cwds sharing the same ~/.claude
-# do not advance each other's cursor.
-CWD_HASH=$(printf '%s' "$PWD" | sha1sum | cut -c1-12)
-CURSOR_FILE="$STATE_DIR/cursor-$CWD_HASH"
+# Cursor is per-session: two sessions in the same cwd each maintain
+# their own read position so neither swallows the other's notifications.
+CURSOR_FILE="$STATE_DIR/cursor-$SID"
 # Set ALL=1 if the user passed --all, else ALL=0. Substitute the
 # concrete value when assembling the bash command.
 ALL=<0_OR_1>
@@ -91,7 +94,10 @@ fi
 
 ## Notes
 
-- The cursor is **per session ID** (per machine). It is not shared
+- The cursor is **per session ID**. Two Claude Code sessions in the
+  same cwd each maintain their own cursor — both will independently
+  see every message addressed to that cwd (effectively a broadcast
+  group). The cursor is local to this machine and is not shared
   across hosts even when the message file is.
 - Messages sent from this same `cwd` to itself will be shown; that is
   almost always a bug in the sender, so flag it to the user instead

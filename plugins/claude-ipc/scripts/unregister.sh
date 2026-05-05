@@ -8,6 +8,9 @@ SID=$(printf '%s' "$INPUT" | jq -r '.session_id // empty')
 [ -n "$SID" ] || exit 0
 
 STATE_DIR="$HOME/.claude/claude-ipc"
+SESSIONS_DIR="$STATE_DIR/sessions"
+rm -f "$SESSIONS_DIR/$PPID.sid" 2>/dev/null || true
+
 CONFIG="$STATE_DIR/config"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
 MSGFILE=""

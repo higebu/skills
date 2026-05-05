@@ -38,14 +38,23 @@ this is the very first send before any session has registered.
 Suggest `/claude-ipc:config` only when the file turns out not to be
 writable.
 
-## Step 2: Resolve the session ID
+## Step 2: Resolve the per-session ID
+
+The SessionStart hook writes the current session's UUID to
+`$STATE_DIR/sessions/$PPID.sid`, where `$PPID` of any tool-call bash
+is the Claude Code process. Look it up there. Fall back to the
+machine-wide sid file if the session marker is missing (e.g. plugin
+was just installed without a fresh session start).
 
 ```bash
-SID_FILE="$STATE_DIR/sid"
-if [ ! -s "$SID_FILE" ]; then
-  uuidgen > "$SID_FILE"
+SESSION_SID_FILE="$STATE_DIR/sessions/$PPID.sid"
+if [ -s "$SESSION_SID_FILE" ]; then
+  SID=$(cat "$SESSION_SID_FILE")
+else
+  MACHINE_SID_FILE="$STATE_DIR/sid"
+  [ -s "$MACHINE_SID_FILE" ] || uuidgen > "$MACHINE_SID_FILE"
+  SID=$(cat "$MACHINE_SID_FILE")
 fi
-SID=$(cat "$SID_FILE")
 ```
 
 ## Step 3: Validate inputs
