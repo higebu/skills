@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # SessionStart hook for claude-ipc.
-# - Reads the cwd's user-given name from
-#   ~/.claude/claude-ipc/cwd-names/<sha1>.name (set by /claude-ipc:config).
-# - If no name is configured, emits hookSpecificOutput.additionalContext
-#   nudging the LLM to ask the user to run /claude-ipc:config name <NAME>.
-#   No peer entry is registered.
-# - Otherwise registers a peer entry in the peers JSONL.
+#
+# Mailbox model: messages persist in messages.jsonl whether or not
+# the recipient is online. This hook runs at session start, reads
+# any unread messages addressed to this cwd's NAME, and surfaces
+# them to the LLM as hookSpecificOutput.additionalContext. The
+# cursor is then advanced so /claude-ipc:recv won't re-deliver them.
+#
+# If the cwd has no NAME configured, emit a nudge instead.
 set -euo pipefail
 
 INPUT=$(cat)
@@ -19,18 +21,16 @@ mkdir -p "$NAMES_DIR"
 CWD_HASH=$(printf '%s' "$CWD" | sha1sum | cut -c1-12)
 NAME_FILE="$NAMES_DIR/$CWD_HASH.name"
 
-NAME=""
-[ -s "$NAME_FILE" ] && NAME=$(head -1 "$NAME_FILE" | tr -d '\n')
-
 emit_context() {
   jq -cn --arg ctx "$1" \
     '{hookSpecificOutput:{hookEventName:"SessionStart", additionalContext:$ctx}}'
 }
 
-if [ -z "$NAME" ]; then
+if [ ! -s "$NAME_FILE" ]; then
   emit_context "claude-ipc is installed but this working directory has no name yet. Run \`/claude-ipc:config name <NAME>\` (e.g. \`name $(basename "$CWD")\`) before sending or receiving messages. cwd: $CWD"
   exit 0
 fi
+NAME=$(head -1 "$NAME_FILE" | tr -d '\n')
 
 # Resolve message_file location (default or config override).
 CONFIG="$STATE_DIR/config"
@@ -41,38 +41,46 @@ if [ -f "$CONFIG" ]; then
   MSGFILE="${MSGFILE/#\~/$HOME}"
 fi
 MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
-PEERS_DIR=$(dirname "$MSGFILE")
-mkdir -p "$PEERS_DIR"
-PEERS="$PEERS_DIR/claude-ipc-peers.jsonl"
-LOCK="$PEERS.lock"
-touch "$PEERS" "$LOCK"
 
-HOST=$(hostname)
-TS=$(date -u +%FT%TZ)
+CURSOR_FILE="$STATE_DIR/cursor-$NAME"
+SIZE=0
+[ -f "$MSGFILE" ] && SIZE=$(stat -c%s "$MSGFILE" 2>/dev/null || stat -f%z "$MSGFILE")
 
-ENTRY=$(jq -cn \
-  --arg ts   "$TS" \
-  --arg name "$NAME" \
-  --arg cwd  "$CWD" \
-  --arg host "$HOST" \
-  '{ts:$ts, name:$name, cwd:$cwd, host:$host}')
+# First-time use: jump to current EOF, no historical replay on first launch.
+if [ ! -s "$CURSOR_FILE" ]; then
+  printf '%s\n' "$SIZE" > "$CURSOR_FILE"
+  emit_context "claude-ipc identity: name=$NAME, cwd=$CWD. Mailbox initialized — no unread messages. Send: /claude-ipc:send <name> <msg>; receive: /claude-ipc:recv; live: /claude-ipc:watch."
+  exit 0
+fi
 
-(
-  flock 9
-  TMP=$(mktemp)
-  if [ -s "$PEERS" ]; then
-    # Drop any prior entry for the same (host, name) — re-register.
-    jq -c --arg name "$NAME" --arg host "$HOST" '
-      select((.host // "") != $host or (.name // "") != $name)
-    ' "$PEERS" > "$TMP" || true
-  fi
-  printf '%s\n' "$ENTRY" >> "$TMP"
-  mv "$TMP" "$PEERS"
-) 9>"$LOCK"
+OFFSET=$(cat "$CURSOR_FILE")
+[ "$OFFSET" -gt "$SIZE" ] && OFFSET=0  # rotation guard
 
-ALIVE=$(jq -rs --arg me "$NAME" \
-  '[.[] | select(.name != $me) | .name] | unique | join(", ")' "$PEERS")
-[ -z "$ALIVE" ] && ALIVE="(no other peers online)"
-emit_context "claude-ipc identity: name=$NAME, cwd=$CWD. Other peers online: $ALIVE. Send with /claude-ipc:send <name> <msg>; receive with /claude-ipc:recv or /claude-ipc:watch."
+if [ "$OFFSET" -ge "$SIZE" ]; then
+  emit_context "claude-ipc identity: name=$NAME, cwd=$CWD. No new messages."
+  printf '%s\n' "$SIZE" > "$CURSOR_FILE"
+  exit 0
+fi
 
+UNREAD=$(tail -c +$((OFFSET + 1)) "$MSGFILE" | \
+  jq -r --arg me "$NAME" '
+    select(.to == $me)
+    | "[\(.ts)] from \(.from) (\(.from_cwd // "?")): \(.msg)"
+  ' 2>/dev/null || true)
+
+# Advance cursor regardless (we have read up to current EOF).
+printf '%s\n' "$SIZE" > "$CURSOR_FILE"
+
+if [ -z "$UNREAD" ]; then
+  emit_context "claude-ipc identity: name=$NAME, cwd=$CWD. No new messages addressed here."
+  exit 0
+fi
+
+COUNT=$(printf '%s\n' "$UNREAD" | grep -c '^\[')
+TAIL=$(printf '%s\n' "$UNREAD" | tail -n 20)
+SUFFIX=""
+if [ "$COUNT" -gt 20 ]; then
+  SUFFIX=$'\n\n... and '"$((COUNT - 20))"' earlier message(s) — use /claude-ipc:history all to see them.'
+fi
+emit_context "claude-ipc — $COUNT unread message(s) for $NAME (cwd $CWD):\n\n$TAIL$SUFFIX"
 exit 0

@@ -59,7 +59,33 @@ case '<SUB>' in
     NEW='<ARG>'
     [[ "$NEW" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "Invalid name: $NEW (allowed: [A-Za-z0-9_.-]+)" >&2; exit 1; }
     printf '%s\n' "$NEW" > "$NAME_FILE"
-    echo "Set name=$NEW for cwd $PWD"
+    # Update the address book (peers JSONL next to the message file).
+    CFG="$STATE_DIR/config"
+    DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
+    if [ -f "$CFG" ]; then
+      MF=$(sed -n 's/^message_file=//p' "$CFG" | head -1); MF="${MF/#\~/$HOME}"
+    fi
+    MF="${MF:-$DEFAULT_MSGFILE}"
+    PEERS="$(dirname "$MF")/claude-ipc-peers.jsonl"
+    LOCK="$PEERS.lock"
+    mkdir -p "$(dirname "$PEERS")"
+    touch "$PEERS" "$LOCK"
+    HOST=$(hostname)
+    ENTRY=$(jq -cn --arg ts "$(date -u +%FT%TZ)" --arg name "$NEW" --arg cwd "$PWD" --arg host "$HOST" \
+      '{ts:$ts, name:$name, cwd:$cwd, host:$host}')
+    (
+      flock 9
+      TMP=$(mktemp)
+      if [ -s "$PEERS" ]; then
+        # Drop any prior (host, name) or (host, cwd) entry — rename or re-claim case.
+        jq -c --arg name "$NEW" --arg cwd "$PWD" --arg host "$HOST" '
+          select((.host // "") != $host or ((.name // "") != $name and (.cwd // "") != $cwd))
+        ' "$PEERS" > "$TMP" || true
+      fi
+      printf '%s\n' "$ENTRY" >> "$TMP"
+      mv "$TMP" "$PEERS"
+    ) 9>"$LOCK"
+    echo "Set name=$NEW for cwd $PWD (registered in $PEERS)"
     ;;
   message-file)
     CFG="$STATE_DIR/config"
@@ -113,9 +139,13 @@ EOF
   not in the project repo, so it is not accidentally committed.
 - send/recv/watch/history/peers all read this file directly via
   the cwd's sha1 — no env vars, no marker files, no hook-touch
-  required just to know who you are. The SessionStart hook only
-  uses it to register a peer entry and to surface the IPC roster
-  to the LLM as `additionalContext`.
+  required just to know who you are.
+- The peers JSONL is now an **address book**: `/claude-ipc:config
+  name <NAME>` adds an entry, and entries persist regardless of
+  whether the named instance is currently online. messages are a
+  mailbox — written to the JSONL even if the recipient is offline,
+  and delivered to the LLM via `additionalContext` when that
+  instance next starts.
 - For cross-host bridging, point `message-file` at a shared path
   (NFS, sshfs, ...) and run `/claude-ipc:config message-file <path>`
   on each host.

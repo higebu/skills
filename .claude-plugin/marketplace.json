@@ -45,8 +45,8 @@
     },
     {
       "name": "claude-ipc",
-      "description": "Name-addressed IPC between Claude Code instances via a shared JSONL file. Skills: config, send, recv, watch, history, peers.",
-      "version": "0.8.1",
+      "description": "Mailbox-style IPC between named Claude Code instances via a shared JSONL file. Unread messages are auto-delivered to the LLM at next session start.",
+      "version": "0.9.0",
       "source": "./plugins/claude-ipc"
     }
   ]
