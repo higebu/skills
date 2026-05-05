@@ -19,7 +19,10 @@ mkdir -p "$SESSIONS_DIR"
 # completion, so we also write a pid-keyed marker file below as a
 # robust fallback.
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
-  printf 'CLAUDE_IPC_SID=%s\n' "$SID" >> "$CLAUDE_ENV_FILE"
+  # CLAUDE_ENV_FILE points at a *.sh script that Claude Code sources
+  # before tool calls. Use 'export' so the var actually reaches the
+  # subprocess env, not just the sourcing shell's local scope.
+  printf 'export CLAUDE_IPC_SID=%s\n' "$SID" >> "$CLAUDE_ENV_FILE"
 fi
 
 # One-line debug breadcrumb per fire so we can diagnose env-file
@@ -70,6 +73,15 @@ HOST=$(hostname)
 if [ -n "$CLAUDE_PID" ]; then
   printf '%s\n' "$SID" > "$SESSIONS_DIR/$CLAUDE_PID.sid"
 fi
+
+# Garbage-collect markers whose pid no longer exists (orphans from
+# crashed Claude sessions or pre-0.7.2 cached versions).
+for m in "$SESSIONS_DIR"/*.sid; do
+  [ -e "$m" ] || break
+  base=$(basename "$m" .sid)
+  case "$base" in *[!0-9]*) continue ;; esac
+  kill -0 "$base" 2>/dev/null || rm -f "$m"
+done
 
 ENTRY=$(jq -cn \
   --arg ts   "$(date -u +%FT%TZ)" \
