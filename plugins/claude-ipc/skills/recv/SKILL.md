@@ -48,17 +48,23 @@ fi
 
 # Cursor is per-session: two sessions in the same cwd each maintain
 # their own read position so neither swallows the other's notifications.
+# A fresh session_id (Claude restart, /clear, etc.) means no cursor
+# file yet; treat that as "start watching from now" so the first recv
+# after a restart does not replay every historical message. Use --all
+# to opt into a full replay.
 CURSOR_FILE="$STATE_DIR/cursor-$SID"
+SIZE=$(stat -c%s "$MSGFILE" 2>/dev/null || stat -f%z "$MSGFILE")
 # Set ALL=1 if the user passed --all, else ALL=0. Substitute the
 # concrete value when assembling the bash command.
 ALL=<0_OR_1>
-if [ "$ALL" = "1" ] || [ ! -s "$CURSOR_FILE" ]; then
+if [ "$ALL" = "1" ]; then
   OFFSET=0
+elif [ ! -s "$CURSOR_FILE" ]; then
+  OFFSET=$SIZE
 else
   OFFSET=$(cat "$CURSOR_FILE")
 fi
 
-SIZE=$(stat -c%s "$MSGFILE" 2>/dev/null || stat -f%z "$MSGFILE")
 # guard against truncation/rotation: reset if the file shrank
 [ "$OFFSET" -gt "$SIZE" ] && OFFSET=0
 ```
@@ -93,11 +99,16 @@ fi
 
 ## Notes
 
-- The cursor is **per session ID**. Two Claude Code sessions in the
-  same cwd each maintain their own cursor — both will independently
-  see every message addressed to that cwd (effectively a broadcast
-  group). The cursor is local to this machine and is not shared
-  across hosts even when the message file is.
+- The cursor is **per session ID**, matching Claude Code's own
+  lifecycle: a Claude restart or `/clear` rotates the session_id and
+  the new session naturally starts with a fresh cursor that points at
+  the *current* end-of-file (so it only sees future messages, not
+  history). Use `--all` to replay everything addressed here.
+  Two Claude Code sessions in the same cwd each maintain their own
+  cursor — both independently see every message addressed to that
+  cwd (effectively a broadcast group). The cursor is local to this
+  machine and is not shared across hosts even when the message file
+  is.
 - Messages sent from this same `cwd` to itself will be shown; that is
   almost always a bug in the sender, so flag it to the user instead
   of silently filtering it out.
