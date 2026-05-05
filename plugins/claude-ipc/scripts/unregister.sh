@@ -1,29 +1,19 @@
 #!/usr/bin/env bash
-# SessionEnd hook for claude-ipc — drop this session's peer entry
-# (best effort — keyed by claude_pid + host).
+# SessionEnd hook — drop this cwd's peer entry by (host, name).
 set -euo pipefail
 
 INPUT=$(cat)
 CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty')
+[ -n "$CWD" ] || exit 0
 
 STATE_DIR="$HOME/.claude/claude-ipc"
-SESSIONS_DIR="$STATE_DIR/sessions"
+NAMES_DIR="$STATE_DIR/cwd-names"
+CWD_HASH=$(printf '%s' "$CWD" | sha1sum | cut -c1-12)
+NAME_FILE="$NAMES_DIR/$CWD_HASH.name"
 
-find_claude_pid() {
-  local pid=$$ cmd
-  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
-    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
-    case "$cmd" in
-      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
-    esac
-    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
-  done
-  return 1
-}
-CLAUDE_PID=$(find_claude_pid 2>/dev/null) || CLAUDE_PID=""
-HOST=$(hostname)
-
-[ -n "$CLAUDE_PID" ] && rm -f "$SESSIONS_DIR/$CLAUDE_PID.name" 2>/dev/null || true
+NAME=""
+[ -s "$NAME_FILE" ] && NAME=$(head -1 "$NAME_FILE" | tr -d '\n')
+[ -n "$NAME" ] || exit 0
 
 CONFIG="$STATE_DIR/config"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
@@ -38,15 +28,12 @@ LOCK="$PEERS.lock"
 [ -f "$PEERS" ] || exit 0
 touch "$LOCK"
 
+HOST=$(hostname)
 (
   flock 9
   TMP=$(mktemp)
-  jq -c \
-    --arg host "$HOST" \
-    --arg pid  "$CLAUDE_PID" \
-    --arg cwd  "$CWD" '
-    select($pid == "" or (.host // "") != $host or (.pid // "") != $pid)
-    | select($cwd == "" or (.cwd // "") != $cwd or (.host // "") != $host or (.pid // "") != $pid)
+  jq -c --arg name "$NAME" --arg host "$HOST" '
+    select((.host // "") != $host or (.name // "") != $name)
   ' "$PEERS" > "$TMP" || true
   mv "$TMP" "$PEERS"
 ) 9>"$LOCK"

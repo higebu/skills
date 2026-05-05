@@ -21,7 +21,10 @@ MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
 PEERS="$(dirname "$MSGFILE")/claude-ipc-peers.jsonl"
 [ -s "$PEERS" ] || { echo "No active peers."; exit 0; }
 
-ME="${CLAUDE_IPC_NAME:-}"
+CWD_HASH=$(printf '%s' "$PWD" | sha1sum | cut -c1-12)
+NAME_FILE="$STATE_DIR/cwd-names/$CWD_HASH.name"
+ME=""
+[ -s "$NAME_FILE" ] && ME=$(head -1 "$NAME_FILE" | tr -d '\n')
 jq -rs --arg me "$ME" '
   sort_by(.ts) | reverse | .[]
   | (if .name == $me then "* " else "  " end)

@@ -60,7 +60,6 @@ case '<SUB>' in
     [[ "$NEW" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "Invalid name: $NEW (allowed: [A-Za-z0-9_.-]+)" >&2; exit 1; }
     printf '%s\n' "$NEW" > "$NAME_FILE"
     echo "Set name=$NEW for cwd $PWD"
-    echo "(restart this Claude session — or run /claude-ipc:config — to refresh CLAUDE_IPC_NAME in your env)"
     ;;
   message-file)
     CFG="$STATE_DIR/config"
@@ -103,7 +102,6 @@ cat <<EOF
 claude-ipc config:
   cwd          : $PWD
   name         : $NAME
-  CLAUDE_IPC_NAME (env): ${CLAUDE_IPC_NAME:-(not exported in this shell)}
   message_file : $MSGFILE  $SRC
   peers_file   : $PEERS_FILE  ($PEER_COUNT peers)
 EOF
@@ -113,10 +111,11 @@ EOF
 
 - The name lives in `~/.claude/claude-ipc/cwd-names/<sha1>.name`,
   not in the project repo, so it is not accidentally committed.
-- The SessionStart hook reads the name on every Claude launch and
-  exports `CLAUDE_IPC_NAME` for tool calls (with a marker-file
-  fallback for Claude Code versions whose `CLAUDE_ENV_FILE`
-  propagation is broken).
+- send/recv/watch/history/peers all read this file directly via
+  the cwd's sha1 — no env vars, no marker files, no hook-touch
+  required just to know who you are. The SessionStart hook only
+  uses it to register a peer entry and to surface the IPC roster
+  to the LLM as `additionalContext`.
 - For cross-host bridging, point `message-file` at a shared path
   (NFS, sshfs, ...) and run `/claude-ipc:config message-file <path>`
   on each host.

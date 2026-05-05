@@ -23,24 +23,10 @@ fi
 MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
 [ -f "$MSGFILE" ] || { echo "No messages yet."; exit 0; }
 
-resolve_my_name() {
-  if [ -n "${CLAUDE_IPC_NAME:-}" ]; then printf '%s\n' "$CLAUDE_IPC_NAME"; return 0; fi
-  local pid=$$ cmd
-  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
-    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
-    case "$cmd" in
-      claude|claude\ *|*/claude|*/claude\ *)
-        local f="$STATE_DIR/sessions/$pid.name"
-        [ -s "$f" ] && cat "$f" && return 0
-        return 1 ;;
-    esac
-    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
-  done
-  local h; h=$(printf '%s' "$PWD" | sha1sum | cut -c1-12)
-  [ -s "$STATE_DIR/cwd-names/$h.name" ] && cat "$STATE_DIR/cwd-names/$h.name"
-}
-NAME=$(resolve_my_name) || NAME=""
-[ -n "$NAME" ] || { echo "Error: no claude-ipc name. Run /claude-ipc:config name <NAME>." >&2; exit 1; }
+CWD_HASH=$(printf '%s' "$PWD" | sha1sum | cut -c1-12)
+NAME_FILE="$STATE_DIR/cwd-names/$CWD_HASH.name"
+[ -s "$NAME_FILE" ] || { echo "Error: no claude-ipc name. Run /claude-ipc:config name <NAME>." >&2; exit 1; }
+NAME=$(head -1 "$NAME_FILE" | tr -d '\n')
 
 # Per-name cursor — stable across Claude restarts.
 CURSOR_FILE="$STATE_DIR/cursor-$NAME"
