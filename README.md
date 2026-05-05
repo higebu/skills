@@ -48,6 +48,7 @@ Once installed, invoke skills as:
 /claude-ipc:init [shared-message-file-path]
 /claude-ipc:send <recipient-cwd> <message>
 /claude-ipc:recv [--all]
+/claude-ipc:peers
 ```
 
 ### GitHub Copilot CLI

@@ -115,6 +115,7 @@ Initialized claude-ipc:
 
 Send a message:    /claude-ipc:send <recipient-cwd> "<message>"
 Read new messages: /claude-ipc:recv
+List known peers:  /claude-ipc:peers
 ```
 
 ## Notes
@@ -127,3 +128,8 @@ Read new messages: /claude-ipc:recv
   on each side with the same path.
 - Re-running `/claude-ipc:init` is safe; it will not regenerate the
   session ID.
+- The peers list is maintained automatically by SessionStart /
+  SessionEnd hooks shipped with this plugin — every Claude Code
+  session registers itself on launch and unregisters on exit. You
+  never have to call `/claude-ipc:init` just to be visible in
+  `/claude-ipc:peers`.

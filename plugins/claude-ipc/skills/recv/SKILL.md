@@ -43,7 +43,10 @@ if [ ! -s "$SID_FILE" ]; then
 fi
 SID=$(cat "$SID_FILE")
 
-CURSOR_FILE="$STATE_DIR/cursor-$SID"
+# Per-cwd cursor (not per-sid) so two cwds sharing the same ~/.claude
+# do not advance each other's cursor.
+CWD_HASH=$(printf '%s' "$PWD" | sha1sum | cut -c1-12)
+CURSOR_FILE="$STATE_DIR/cursor-$CWD_HASH"
 # Set ALL=1 if the user passed --all, else ALL=0. Substitute the
 # concrete value when assembling the bash command.
 ALL=<0_OR_1>
