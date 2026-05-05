@@ -23,7 +23,7 @@ CONFIG="$STATE_DIR/config"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
 
 if [ -f "$CONFIG" ]; then
-  MSGFILE=$(awk -F= '$1=="message_file"{print $2; exit}' "$CONFIG")
+  MSGFILE=$(sed -n 's/^message_file=//p' "$CONFIG" | head -1)
   MSGFILE="${MSGFILE/#\~/$HOME}"
 fi
 MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
@@ -48,22 +48,32 @@ SID=$(cat "$SID_FILE")
 
 ## Step 3: Validate inputs
 
-- `$0` is the recipient working directory. Normalize it with
-  `realpath -m -- "$0"` so relative paths and trailing slashes do not
-  cause mismatches with the recipient's `$PWD`.
-- The message is everything after the recipient cwd. Treat it as
-  one literal string; do not try to shell-interpret it.
-- Reject empty inputs with a clear error.
+The user's slash-command arguments are:
+
+- The first argument is the recipient working directory. Normalize it
+  with `realpath -m -- <RECIPIENT>` so relative paths and trailing
+  slashes do not cause mismatches with the recipient's `$PWD`.
+- The remainder of the line is the message. Treat it as one literal
+  string; do not shell-interpret it. If the user wrapped it in quotes,
+  preserve them.
+- Reject empty arguments with a clear error
+  (`Usage: /claude-ipc:send <recipient-cwd> <message>`).
+
+When you assemble the bash command, substitute the actual values
+directly into shell-quoted variables — do **not** rely on positional
+parameters in the SKILL.md text (they get pre-resolved by the harness):
 
 ```bash
-TO_CWD=$(realpath -m -- "$1")
-shift
-MSG="$*"
+TO_CWD=$(realpath -m -- '<RECIPIENT_CWD>')
+MSG='<MESSAGE>'
 [ -n "$TO_CWD" ] && [ -n "$MSG" ] || {
   echo "Usage: /claude-ipc:send <recipient-cwd> <message>" >&2
   exit 1
 }
 ```
+
+Replace `<RECIPIENT_CWD>` and `<MESSAGE>` with the user's values,
+single-quoted with any embedded single quotes escaped as `'\''`.
 
 ## Step 4: Append the JSON line
 

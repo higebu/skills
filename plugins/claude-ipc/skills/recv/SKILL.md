@@ -25,7 +25,7 @@ CONFIG="$STATE_DIR/config"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
 
 if [ -f "$CONFIG" ]; then
-  MSGFILE=$(awk -F= '$1=="message_file"{print $2; exit}' "$CONFIG")
+  MSGFILE=$(sed -n 's/^message_file=//p' "$CONFIG" | head -1)
   MSGFILE="${MSGFILE/#\~/$HOME}"
 fi
 MSGFILE="${MSGFILE:-$DEFAULT_MSGFILE}"
@@ -44,7 +44,10 @@ fi
 SID=$(cat "$SID_FILE")
 
 CURSOR_FILE="$STATE_DIR/cursor-$SID"
-if [ "$1" = "--all" ] || [ ! -s "$CURSOR_FILE" ]; then
+# Set ALL=1 if the user passed --all, else ALL=0. Substitute the
+# concrete value when assembling the bash command.
+ALL=<0_OR_1>
+if [ "$ALL" = "1" ] || [ ! -s "$CURSOR_FILE" ]; then
   OFFSET=0
 else
   OFFSET=$(cat "$CURSOR_FILE")
@@ -78,7 +81,7 @@ Only update the cursor when the user did *not* pass `--all`, so that
 "replay everything" stays non-destructive.
 
 ```bash
-if [ "$1" != "--all" ]; then
+if [ "$ALL" = "0" ]; then
   printf '%s\n' "$SIZE" > "$CURSOR_FILE"
 fi
 ```

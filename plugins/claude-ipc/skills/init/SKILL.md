@@ -52,19 +52,23 @@ messages as `session_id` for traceability.
 
 ## Step 2: Decide where the message file lives
 
-If the user passed a path as `$0`, use it directly. Otherwise ask via
-`AskUserQuestion` with three options:
+If the user provided a path argument when invoking the skill, use it
+directly as `MSGFILE`. Otherwise ask via `AskUserQuestion` with three
+options:
 
 1. **Default `~/.claude/messages.jsonl`** — same-host, same-user only.
 2. **Shared path** — prompt the user (second `AskUserQuestion`) for an
    absolute path on a shared filesystem (NFS, sshfs, Dropbox,
    git-annex, ...). Both ends of the IPC must be able to write there.
 3. **Skip — keep current setting** — leave any existing config in
-   place.
-
-Skip the question entirely when `$0` is provided.
+   place; this still creates the state dir / sid / default
+   `messages.jsonl` so subsequent send/recv calls do not have to.
 
 ## Step 3: Persist the choice
+
+`SHARED_PATH` below stands for the literal path supplied by the user
+(either as the skill argument or via the second AskUserQuestion).
+Substitute it in directly when assembling the bash command.
 
 ```bash
 CONFIG="$STATE_DIR/config"
@@ -79,7 +83,7 @@ elif [ "$CHOICE" = "shared" ]; then
 else
   # keep current setting — re-resolve from existing config
   if [ -f "$CONFIG" ]; then
-    MSGFILE=$(awk -F= '$1=="message_file"{print $2; exit}' "$CONFIG")
+    MSGFILE=$(sed -n 's/^message_file=//p' "$CONFIG" | head -1)
     MSGFILE="${MSGFILE/#\~/$HOME}"
   else
     MSGFILE="$HOME/.claude/messages.jsonl"
