@@ -40,14 +40,34 @@ writable.
 
 ## Step 2: Resolve the per-session ID
 
-The SessionStart hook exports `CLAUDE_IPC_SID=<uuid>` into every
-Bash tool call via Claude Code's `CLAUDE_ENV_FILE` mechanism, so
-`$CLAUDE_IPC_SID` is normally already in the environment. Fall back
-to the machine-wide sid file when the env var is missing (plugin
-freshly installed without a session start, etc.).
+Three-tier resolution:
+
+1. `$CLAUDE_IPC_SID` env var, set by the SessionStart hook via
+   `CLAUDE_ENV_FILE` (works when Claude Code propagates the env file).
+2. Marker file `$STATE_DIR/sessions/<claude-pid>.sid` written by the
+   same hook, looked up by walking the parent chain to find the
+   `claude` process.
+3. Machine-wide sid (`$STATE_DIR/sid`).
 
 ```bash
 SID="${CLAUDE_IPC_SID:-}"
+if [ -z "$SID" ]; then
+  find_claude_pid() {
+    local pid=$$ cmd
+    while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
+      cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
+      case "$cmd" in
+        claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
+      esac
+      pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
+    done
+    return 1
+  }
+  if CLAUDE_PID=$(find_claude_pid); then
+    M="$STATE_DIR/sessions/$CLAUDE_PID.sid"
+    [ -s "$M" ] && SID=$(cat "$M")
+  fi
+fi
 if [ -z "$SID" ]; then
   MACHINE_SID_FILE="$STATE_DIR/sid"
   [ -s "$MACHINE_SID_FILE" ] || uuidgen > "$MACHINE_SID_FILE"

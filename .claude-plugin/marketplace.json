@@ -46,7 +46,7 @@
     {
       "name": "claude-ipc",
       "description": "IPC between Claude Code instances via a shared JSONL file. Skills: config, send, recv, watch, history, peers.",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "source": "./plugins/claude-ipc"
     }
   ]

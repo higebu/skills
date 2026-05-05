@@ -37,9 +37,26 @@ mkdir -p "$STATE_DIR"
 ## Step 2: Resolve the session ID and cursor
 
 ```bash
-# Per-session SID is exported by the SessionStart hook via
-# CLAUDE_ENV_FILE. Fall back to the machine-wide sid if it's missing.
+# Per-session SID resolution: env var (CLAUDE_ENV_FILE) → pid-keyed
+# marker file (set by SessionStart hook) → machine fallback.
 SID="${CLAUDE_IPC_SID:-}"
+if [ -z "$SID" ]; then
+  find_claude_pid() {
+    local pid=$$ cmd
+    while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
+      cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
+      case "$cmd" in
+        claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
+      esac
+      pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
+    done
+    return 1
+  }
+  if CLAUDE_PID=$(find_claude_pid); then
+    M="$STATE_DIR/sessions/$CLAUDE_PID.sid"
+    [ -s "$M" ] && SID=$(cat "$M")
+  fi
+fi
 if [ -z "$SID" ]; then
   MACHINE_SID_FILE="$STATE_DIR/sid"
   [ -s "$MACHINE_SID_FILE" ] || uuidgen > "$MACHINE_SID_FILE"
