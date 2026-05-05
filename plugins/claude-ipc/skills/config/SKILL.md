@@ -74,36 +74,15 @@ CONFIG="$STATE_DIR/config"
 SID_FILE="$STATE_DIR/sid"
 DEFAULT_MSGFILE="$HOME/.claude/messages.jsonl"
 
-find_claude_sid_with_source() {
-  local pid=$$ cmd uuid
-  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
-    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
-    case "$cmd" in
-      claude|claude\ *|*/claude|*/claude\ *)
-        uuid=$(printf '%s' "$cmd" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
-        if [ -n "$uuid" ]; then
-          printf '%s\t%s\n' "$uuid" "(claude --resume cmdline, pid $pid)"; return 0
-        fi
-        if [ -s "$HOME/.claude/claude-ipc/sessions/$pid.sid" ]; then
-          printf '%s\t%s\n' "$(cat "$HOME/.claude/claude-ipc/sessions/$pid.sid")" "(SessionStart hook marker, claude pid $pid)"; return 0
-        fi
-        return 1 ;;
-    esac
-    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
-  done
-  return 1
-}
-
-SID=""
-SID_SOURCE=""
-if line=$(find_claude_sid_with_source); then
-  SID=${line%%$'\t'*}
-  SID_SOURCE=${line#*$'\t'}
+if [ -n "${CLAUDE_IPC_SID:-}" ]; then
+  SID="$CLAUDE_IPC_SID"
+  SID_SOURCE="(this session, via CLAUDE_ENV_FILE from SessionStart hook)"
 elif [ -s "$SID_FILE" ]; then
   SID=$(cat "$SID_FILE")
   SID_SOURCE="(machine fallback)"
 else
   SID="(none — no session has started since install)"
+  SID_SOURCE=""
 fi
 
 if [ -f "$CONFIG" ]; then

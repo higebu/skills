@@ -9,28 +9,13 @@ CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty')
 [ -n "$SID" ] && [ -n "$CWD" ] || exit 0
 
 STATE_DIR="$HOME/.claude/claude-ipc"
-SESSIONS_DIR="$STATE_DIR/sessions"
-mkdir -p "$SESSIONS_DIR"
+mkdir -p "$STATE_DIR"
 
-# Walk up the parent chain to find the long-lived `claude` process
-# that owns this session. $PPID here is a short-lived intermediate
-# spawned by Claude to run the hook, so we cannot rely on it. Tool-
-# call bash subprocesses walk the same chain to find the same pid.
-find_claude_pid() {
-  local pid=$$
-  local cmd
-  while [ -n "$pid" ] && [ "$pid" != "1" ] && [ "$pid" != "0" ]; do
-    cmd=$(ps -o command= -p "$pid" 2>/dev/null) || return 1
-    case "$cmd" in
-      claude|claude\ *|*/claude|*/claude\ *) printf '%s\n' "$pid"; return 0 ;;
-    esac
-    pid=$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d ' ') || return 1
-  done
-  return 1
-}
-CLAUDE_PID=$(find_claude_pid) || CLAUDE_PID=""
-if [ -n "$CLAUDE_PID" ]; then
-  printf '%s\n' "$SID" > "$SESSIONS_DIR/$CLAUDE_PID.sid"
+# Export the session_id into every subsequent Bash tool call via
+# the documented CLAUDE_ENV_FILE mechanism (SessionStart hook only).
+# https://code.claude.com/docs/en/hooks.md
+if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
+  printf 'CLAUDE_IPC_SID=%s\n' "$SID" >> "$CLAUDE_ENV_FILE"
 fi
 
 # Resolve message_file location (default or config override).

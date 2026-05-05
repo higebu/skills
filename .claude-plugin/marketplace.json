@@ -46,7 +46,7 @@
     {
       "name": "claude-ipc",
       "description": "Lightweight IPC between Claude Code instances via a shared JSONL message file. SessionStart/SessionEnd hooks auto-register each session in a peers list. Skills: config, send, recv, peers, watch (event-driven receive via the Monitor tool).",
-      "version": "0.5.2",
+      "version": "0.6.0",
       "source": "./plugins/claude-ipc"
     }
   ]
