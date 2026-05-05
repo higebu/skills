@@ -67,5 +67,5 @@ jq -rs --arg me "$PWD" '
   sid — harmless because send/recv key on cwd, not sid. To prune by
   hand, edit `<dir>/claude-ipc-peers.jsonl` directly.
 - For **cross-host** discovery, point `message_file` at a shared path
-  via `/claude-ipc:init <shared-path>`. Both the message file and the
+  via `/claude-ipc:config <shared-path>`. Both the message file and the
   peers list will then live on shared storage.

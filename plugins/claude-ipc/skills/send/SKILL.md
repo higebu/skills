@@ -32,9 +32,11 @@ mkdir -p "$STATE_DIR" "$(dirname "$MSGFILE")"
 touch "$MSGFILE" "$MSGFILE.lock"
 ```
 
-If the user has not run `/claude-ipc:init` yet, that is fine — this
-will fall back to the default path. Suggest `init` only when the file
-turns out not to be writable.
+The SessionStart hook normally creates these directories and files
+already; this block is defensive in case the hook was disabled or
+this is the very first send before any session has registered.
+Suggest `/claude-ipc:config` only when the file turns out not to be
+writable.
 
 ## Step 2: Resolve the session ID
 

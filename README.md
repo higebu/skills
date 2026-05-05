@@ -45,7 +45,7 @@ Once installed, invoke skills as:
 /rfc-reader:read 791
 /copilot:run <task description>
 /kernel-patch-review:review <patch | git ref>
-/claude-ipc:init [shared-message-file-path]
+/claude-ipc:config [shared-message-file-path]
 /claude-ipc:send <recipient-cwd> <message>
 /claude-ipc:recv [--all]
 /claude-ipc:peers
@@ -101,5 +101,5 @@ brew install jq util-linux ossp-uuid
 
 To bridge instances on different hosts, point this instance at a
 shared message file (NFS, sshfs, Dropbox, git-annex, ...) by running
-`/claude-ipc:init <shared-path>` once per host. The default location
+`/claude-ipc:config <shared-path>` once per host. The default location
 is `~/.claude/messages.jsonl`, suitable for same-host, same-user use.
