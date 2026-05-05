@@ -30,6 +30,18 @@
       "description": "Review Linux kernel patches against submitting-patches and coding-style guidelines using parallel sub-agents",
       "version": "1.0.0",
       "source": "./plugins/kernel-patch-review"
+    },
+    {
+      "name": "iproute2-patch-review",
+      "description": "Review iproute2 patches using the upstream masoncl/review-prompts/iproute checklist (the same prompt netdev maintainers run manually).",
+      "version": "0.1.0",
+      "source": "./plugins/iproute2-patch-review"
+    },
+    {
+      "name": "netdev-patch-review",
+      "description": "Review Linux kernel networking patches (net/, drivers/net/, skb_*, sockets, including SRv6/seg6) using the upstream masoncl/review-prompts/kernel checklist with the networking subsystem context auto-loaded.",
+      "version": "0.1.0",
+      "source": "./plugins/netdev-patch-review"
     }
   ]
 }
