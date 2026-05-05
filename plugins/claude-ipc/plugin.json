@@ -1,7 +1,7 @@
 {
   "name": "claude-ipc",
   "description": "Lightweight IPC between Claude Code instances via a shared JSONL file",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "author": {
     "name": "higebu"
   },
