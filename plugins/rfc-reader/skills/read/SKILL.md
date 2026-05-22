@@ -16,15 +16,24 @@ Analyze RFC $0 and produce a structured summary for protocol dissector implement
 3. If an obsoleting RFC exists, analyze that RFC instead
 4. If updating RFCs exist, also fetch their txt versions in Step 2
 
-### Step 2: Fetch all relevant RFC texts
+### Step 2: Download all relevant RFC texts to local cache
 
-**IMPORTANT: Always use the plain-text version.**
+**IMPORTANT: Always use the plain-text version.** The txt version preserves ASCII art header format diagrams exactly, which is critical for accurate bit-level field extraction. Do NOT use the HTML version.
 
-1. Fetch `https://www.rfc-editor.org/rfc/rfc$0.txt` using `WebFetch`
-2. Also fetch each updating RFC's txt version found in Step 1
-3. **Do NOT use the HTML version.** The txt version preserves ASCII art header format diagrams exactly, which is critical for accurate bit-level field extraction.
+Cache location: `~/.cache/rfc-reader/rfc<N>.txt`. RFCs are immutable once published, so an existing cached file is always reusable — no re-download needed.
 
-### Step 3: Extract and analyze
+For each RFC to analyze (base RFC plus every updating RFC from Step 1), run:
+
+```bash
+mkdir -p ~/.cache/rfc-reader
+[ -s ~/.cache/rfc-reader/rfc<N>.txt ] || curl -fsSL "https://www.rfc-editor.org/rfc/rfc<N>.txt" -o ~/.cache/rfc-reader/rfc<N>.txt
+```
+
+(Replace `<N>` with the RFC number. The `-s` test skips the download when a non-empty cached copy already exists.)
+
+### Step 3: Extract and analyze from the cached files
+
+Read the cached txt files with the `Read` tool (with `offset`/`limit` to target specific sections) and use `Grep` to locate diagrams, sections, and field definitions. Do NOT re-fetch over the network in this step.
 
 Analyze the base RFC **and all updating RFCs together** to produce a single unified field table:
 
