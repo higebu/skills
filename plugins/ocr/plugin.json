@@ -1,0 +1,12 @@
+{
+  "name": "ocr",
+  "description": "Set up and run open-code-review (ocr) for diff reviews and full-repo audits",
+  "version": "1.0.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills",
+  "license": "MIT",
+  "keywords": ["code-review", "opencode", "ocr", "diff-review", "audit"],
+  "skills": "skills/"
+}

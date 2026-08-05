@@ -24,6 +24,12 @@
       "description": "Review Linux kernel networking patches (net/, drivers/net/, skb_*, sockets, including SRv6/seg6) using the upstream masoncl/review-prompts/kernel checklist with the networking subsystem context auto-loaded.",
       "version": "0.1.0",
       "source": "./plugins/netdev-patch-review"
+    },
+    {
+      "name": "ocr",
+      "description": "Set up and run open-code-review (ocr) for diff reviews and full-repo audits",
+      "version": "1.0.0",
+      "source": "./plugins/ocr"
     }
   ]
 }
