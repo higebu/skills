@@ -8,24 +8,6 @@
   },
   "plugins": [
     {
-      "name": "3gpp-reader",
-      "description": "Fetch and analyze 3GPP specs from ETSI to extract protocol header formats, field definitions, and bit layouts",
-      "version": "1.0.0",
-      "source": "./plugins/3gpp-reader"
-    },
-    {
-      "name": "rfc-reader",
-      "description": "Fetch and analyze RFC documents to extract protocol header formats, field definitions, and bit layouts",
-      "version": "1.0.0",
-      "source": "./plugins/rfc-reader"
-    },
-    {
-      "name": "copilot",
-      "description": "Delegate tasks to GitHub Copilot CLI as a sub-agent",
-      "version": "1.0.0",
-      "source": "./plugins/copilot"
-    },
-    {
       "name": "kernel-patch-review",
       "description": "Review Linux kernel patches against submitting-patches and coding-style guidelines using parallel sub-agents",
       "version": "1.0.0",
@@ -42,12 +24,6 @@
       "description": "Review Linux kernel networking patches (net/, drivers/net/, skb_*, sockets, including SRv6/seg6) using the upstream masoncl/review-prompts/kernel checklist with the networking subsystem context auto-loaded.",
       "version": "0.1.0",
       "source": "./plugins/netdev-patch-review"
-    },
-    {
-      "name": "claude-ipc",
-      "description": "Mailbox-style IPC between named Claude Code instances via a shared JSONL file. Unread messages are auto-delivered to the LLM at next session start.",
-      "version": "0.9.0",
-      "source": "./plugins/claude-ipc"
     }
   ]
 }
