@@ -33,9 +33,9 @@ Once installed, invoke skills as:
 
 ```
 /kernel-patch-review:review <patch | git ref>
-/ocr:setup
-/ocr:review [--from <ref> --to <ref>]
-/ocr:scan [--path <dir|file>]
+/ocr-setup
+/ocr-review [--from <ref> --to <ref>]
+/ocr-scan [--path <dir|file>]
 ```
 
 ## Prerequisites
@@ -49,5 +49,5 @@ npm install -g @alibaba-group/open-code-review
 export OPENCODE_API_KEY=sk-...
 ```
 
-Run `/ocr:setup` once to register it as a provider before using
-`/ocr:review` or `/ocr:scan`.
+Run `/ocr-setup` once to register it as a provider before using
+`/ocr-review` or `/ocr-scan`.
