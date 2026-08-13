@@ -24,6 +24,19 @@ ocr review -c <commit> --provider opencode-go --model deepseek-v4-flash
 
 モデル名は接頭辞なしで指定する（`opencode-go/...` 形式は opencode CLI の記法）。
 
+## Go のリポジトリをレビューする場合
+
+`gopls` を MCP サーバーとして登録しておくと、型情報や参照解析を使った
+レビューができる。一度登録すれば以降の `ocr review` に自動で使われる。
+
+```bash
+ocr config set mcp_servers.gopls.type stdio
+ocr config set mcp_servers.gopls.command /usr/local/bin/gopls
+ocr config set mcp_servers.gopls.args '["mcp"]'
+```
+
+`gopls` のパスは環境によって異なるため、`which gopls` の結果に合わせて変更する。
+
 ## ⚠️ 背景コンテキストのフラグを間違えない
 
 **2 つあり、型が違う。取り違えると無言で失敗する。**
