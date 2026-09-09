@@ -123,7 +123,15 @@ Most-flagged daemon in the corpus (363 findings). The recurring shapes:
 
 ### D. `show` command and JSON output
 
-A large, distinctively-FRR cluster (27 JSON-titled findings in scope):
+`workflow.rst` "JSON Output" is documented and binding: **new JSON
+output must be backed by a schema, in particular a YANG model.** Search
+for an existing FRR or standard (e.g. IETF) model first; if none fits,
+an FRR model has to be added. Keys are `camelCased`, and a command with
+nothing to report emits `{}` rather than no object. Check this before
+the behavioral items below - a new set of JSON keys with no model behind
+it is a finding on its own.
+
+Then the empirical cluster (27 JSON-titled findings in scope):
 
 1. **A JSON field written only when true** disappears from the object
    when false, and consumers cannot distinguish "false" from "absent".
@@ -177,6 +185,10 @@ tests that pass without proving anything:
    `run_and_expect` / `topotest.router_json_cmp` with a timeout.
    Undersized convergence windows and "fixed wait weakens flap
    coverage" recur.
+2a. **A BGP test must allow at least 130 seconds to converge**
+   (`topotests.rst`: "BGP tests MUST use generous convergence
+   timeouts"). `run_and_expect(..., count=60, wait=1)` is 60 seconds and
+   fails the rule; check the helper defaults, not just the call sites.
 3. **Assert on the absence of unwanted state, not just the presence of
    wanted state.** Using an "exact" comparison as a shortcut for the
    logic the test actually needs is a named anti-pattern here; extra
@@ -188,7 +200,9 @@ tests that pass without proving anything:
 6. **Deterministic naming.** Labels, ordinals, and router names that
    vary between runs break CI reruns.
 7. **Gate on capability** (MPLS, kernel version) rather than failing or,
-   worse, silently skipping the assertion.
+   worse, silently skipping the assertion. `topotests.rst` points at the
+   library helpers for this; `required_linux_kernel_version()` is the
+   one for a dataplane feature, and existing SRv6 tests gate on 6.0.
 8. Addresses come from documentation or private ranges, never public
    space. New test files need a copyright header.
 9. A major new feature requires automated testing per the
