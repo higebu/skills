@@ -1,0 +1,9 @@
+{
+  "name": "frr-patch-review",
+  "description": "Review FRRouting changes (bgpd, topotests, northbound/YANG, zebra) against FRR's documented conventions and the patterns its public PR review history actually flags.",
+  "version": "0.1.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills"
+}
