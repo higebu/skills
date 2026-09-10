@@ -1,0 +1,12 @@
+{
+  "name": "pr-description",
+  "description": "Write short, self-contained pull request titles and bodies in the style of Linux kernel changelogs: problem first, then the change, nothing the diff already says",
+  "version": "0.1.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills",
+  "license": "MIT",
+  "keywords": ["pull-request", "changelog", "commit-message", "writing"],
+  "skills": "skills/"
+}
