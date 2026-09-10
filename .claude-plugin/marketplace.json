@@ -42,6 +42,12 @@
       "description": "Write short, self-contained pull request titles and bodies in the style of Linux kernel changelogs: problem first, then the change, nothing the diff already says",
       "version": "0.1.0",
       "source": "./plugins/pr-description"
+    },
+    {
+      "name": "git",
+      "description": "Commit messages in kernel changelog style with a mechanical checker, plus SHA-addressed fixup/amend folding and lease-pinned safe push",
+      "version": "0.1.0",
+      "source": "./plugins/git"
     }
   ]
 }

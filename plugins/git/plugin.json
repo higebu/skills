@@ -1,0 +1,12 @@
+{
+  "name": "git",
+  "description": "Commit messages in kernel changelog style with a mechanical checker, plus SHA-addressed fixup/amend folding and lease-pinned safe push",
+  "version": "0.1.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills",
+  "license": "MIT",
+  "keywords": ["git", "commit-message", "fixup", "autosquash", "force-push", "changelog"],
+  "skills": "skills/"
+}
