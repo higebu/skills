@@ -12,13 +12,21 @@ PR 本文は changelog であって、設計書でもレビュー日誌でもな
 
 ## 手順
 
-1. 差分から書く。記憶や計画書から書かない。
+1. 差分とリポジトリの流儀を読む。記憶や計画書から書かない。
 
    ```bash
    git log --oneline ${BASE:-main}..HEAD
    git diff --stat ${BASE:-main}...HEAD
    git diff ${BASE:-main}...HEAD          # 大きければ主要ファイルだけ
+   git log --no-merges --format='%s' -30  # PR タイトルの形式
    ```
+
+   タイトルの形式は既存の多数派に合わせる。
+
+   | 形式 | 例 |
+   |---|---|
+   | Conventional Commits | `fix(tools): keep MCP tool descriptions under 1024 characters` |
+   | subsystem prefix | `seg6: add support for the SRv6 End.M.GTP6.D behavior` |
 
 2. 次の 4 つに一文ずつ答える。答えられない項目は本文に入れない。
 
@@ -43,7 +51,7 @@ PR 本文は changelog であって、設計書でもレビュー日誌でもな
 ## 形
 
 ```
-<type>(<scope>): <何が変わるか、命令形、72 字以内>
+<prefix>: <何が変わるか、命令形、72 字以内>
 
 <問題。何が困っていて、利用者に何が起きるか。1〜3 文。>
 
@@ -59,8 +67,8 @@ Closes #NNN                       <あれば>
 
 - 見出しは付けない。3 段落を超える本文にだけ `## Problem` / `## Changes` /
   `## Testing` を許す。
-- タイトルは Conventional Commits。「何が変わるか」を書き、ファイル名や
-  作業名にしない。
+- タイトルは手順 1 で確認した形式に合わせる。「何が変わるか」を書き、
+  ファイル名や作業名にしない。
 - 命令形、現在形。"Add `get_tdoc`" であって "This PR adds" ではない。
 - 速くなった、小さくなったと書くなら before / after の数値。トレードオフも書く。
 - Issue は `Closes #N` / `Fixes #N` の行で参照し、議論の要点は本文に要約する。
