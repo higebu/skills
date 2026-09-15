@@ -25,8 +25,10 @@ allowed-tools: Read, Bash, Grep, Glob
    |---|---|
    | Conventional Commits | `fix(tools): keep MCP tool descriptions under 1024 characters` |
    | subsystem prefix | `seg6: add support for the SRv6 End.M.GTP6.D behavior` |
+   | prefix なし | `Keep MCP tool descriptions under 1024 characters` |
 
-   本文の長さも既存に合わせる。
+   どちらの形式にも 7 割以上一致しなければ prefix なしとして扱う
+   (`check-msg.sh --style any`)。本文の長さも既存に合わせる。
 
 2. `git diff --cached` を読んでから書く。記憶や計画から書かない。
 
@@ -60,6 +62,7 @@ Signed-off-by: ...                                       ← upstream 向けの�
 
 - 件名は「何が変わるか」。ファイル名や作業名 (`update foo.go`, `WIP`,
   `fix review comments`) にしない。
+- prefix なしのリポジトリでは `<prefix>: ` を省く。
 - 件名の直後は空行。
 - 本文は 75 桁で自分で折り返す。git は折り返さない。
 - 命令形、現在形。"Add", "Fix", "Rewrite"。"Added" / "Adding" /

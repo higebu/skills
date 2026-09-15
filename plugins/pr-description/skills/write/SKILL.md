@@ -27,6 +27,9 @@ PR 本文は changelog であって、設計書でもレビュー日誌でもな
    |---|---|
    | Conventional Commits | `fix(tools): keep MCP tool descriptions under 1024 characters` |
    | subsystem prefix | `seg6: add support for the SRv6 End.M.GTP6.D behavior` |
+   | prefix なし | `Keep MCP tool descriptions under 1024 characters` |
+
+   どちらの形式にも 7 割以上一致しなければ prefix なしとして扱う。
 
 2. 次の 4 つに一文ずつ答える。答えられない項目は本文に入れない。
 
@@ -68,7 +71,8 @@ Closes #NNN                       <あれば>
 - 見出しは付けない。3 段落を超える本文にだけ `## Problem` / `## Changes` /
   `## Testing` を許す。
 - タイトルは手順 1 で確認した形式に合わせる。「何が変わるか」を書き、
-  ファイル名や作業名にしない。
+  ファイル名や作業名にしない。prefix なしのリポジトリでは `<prefix>: ` を
+  省く。
 - 命令形、現在形。"Add `get_tdoc`" であって "This PR adds" ではない。
 - 速くなった、小さくなったと書くなら before / after の数値。トレードオフも書く。
 - Issue は `Closes #N` / `Fixes #N` の行で参照し、議論の要点は本文に要約する。
