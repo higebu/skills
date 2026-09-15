@@ -18,10 +18,16 @@ PR 本文は changelog であって、設計書でもレビュー日誌でもな
    git log --oneline ${BASE:-main}..HEAD
    git diff --stat ${BASE:-main}...HEAD
    git diff ${BASE:-main}...HEAD          # 大きければ主要ファイルだけ
-   git log --no-merges --format='%s' -30  # PR タイトルの形式
    ```
 
-   タイトルの形式は既存の多数派に合わせる。
+   タイトルの形式は既存の PR タイトルの多数派に合わせる。`gh` が使えるなら
+   実際の PR タイトルを見る。コミット件名は squash merge でない限り PR
+   タイトルと一致しないので、`gh` がなければ最後の手段としてのみ使う。
+
+   ```bash
+   gh pr list --state merged --limit 30 --json title -q '.[].title'  # 優先
+   git log --no-merges --format='%s' -30                             # gh がなければ代用
+   ```
 
    | 形式 | 例 |
    |---|---|
