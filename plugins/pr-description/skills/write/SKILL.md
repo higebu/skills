@@ -65,6 +65,10 @@ Closes #NNN                       <あれば>
 - 速くなった、小さくなったと書くなら before / after の数値。トレードオフも書く。
 - Issue は `Closes #N` / `Fixes #N` の行で参照し、議論の要点は本文に要約する。
 - 英語で書く。セッション URL や生成ツールの署名は入れない。
+- 各段落・箇条書き項目は改行を入れず 1 行で書く。コミットメッセージの
+  75 桁折り返し (`/git:commit-message`) はここには適用しない。GitHub は
+  段落を折り返して表示するので、ソース上で改行すると raw 表示や diff で
+  不自然に途切れる。
 
 ## 書かないもの
 
@@ -91,30 +95,17 @@ Closes #NNN                       <あれば>
 ```
 feat: on-demand access to 3GPP meeting documents (TDocs)
 
-Every 3GPP meeting publishes its contributions, CRs, liaison statements and
-reports under `<group>/<meeting>/Docs/` on the FTP site, but the server only
-knows `Specs/archive`. Reading a CR or an LS today means leaving the tool,
-finding the folder and opening the zip by hand.
+Every 3GPP meeting publishes its contributions, CRs, liaison statements and reports under `<group>/<meeting>/Docs/` on the FTP site, but the server only knows `Specs/archive`. Reading a CR or an LS today means leaving the tool, finding the folder and opening the zip by hand.
 
-Add `get_tdoc` (MCP), `get-tdoc` (CLI) and `/tdocs` (web) to read one
-document by TDoc number (`R1-2509715`) or FTP path. The document is fetched,
-converted and cached on demand in a separate SQLite file, like archived spec
-versions; it never enters the main database or search.
+Add `get_tdoc` (MCP), `get-tdoc` (CLI) and `/tdocs` (web) to read one document by TDoc number (`R1-2509715`) or FTP path. The document is fetched, converted and cached on demand in a separate SQLite file, like archived spec versions; it never enters the main database or search.
 
 Changes outside the new packages that the diff does not explain by itself:
-- `docx.ParseOptions.KeepPreamble` keeps content before the first heading as
-  section `""`. Off by default, so spec output is unchanged; for a CR that
-  section is the cover sheet the converter used to drop.
-- The single-flight fetch logic moves from `versionstore` into
-  `internal/ondemand`, shared by both stores.
+- `docx.ParseOptions.KeepPreamble` keeps content before the first heading as section `""`. Off by default, so spec output is unchanged; for a CR that section is the cover sheet the converter used to drop.
+- The single-flight fetch logic moves from `versionstore` into `internal/ondemand`, shared by both stores.
 
-Out of scope: meeting listings, TDoc search and CR cover-sheet extraction.
-`.pptx`/`.xlsx`/`.pdf` bodies are not converted; the tool returns the file
-list and URL instead.
+Out of scope: meeting listings, TDoc search and CR cover-sheet extraction. `.pptx`/`.xlsx`/`.pdf` bodies are not converted; the tool returns the file list and URL instead.
 
-Tested live against the FTP site with a CR, an LS with a nested attachment,
-a meeting report by path (111 sections, 93 images) and a 2010 `.doc`
-(LibreOffice conversion, ~8 s).
+Tested live against the FTP site with a CR, an LS with a nested attachment, a meeting report by path (111 sections, 93 images) and a 2010 `.doc` (LibreOffice conversion, ~8 s).
 ```
 
 ## 参照
