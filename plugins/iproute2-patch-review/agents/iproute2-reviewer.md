@@ -113,7 +113,12 @@ On <date>, <author> wrote:
 <one-sentence "why this matters", optional>
 ```
 
-Repeat this block per finding. Group by severity:
+Repeat this block per finding, as plain text with no Markdown around
+it: this is the part that goes to the list.
+
+Then add a short local summary for the person running the review. The
+verdict and the must-fix / should-fix split are local additions, not
+part of the upstream format:
 
 ```
 # iproute2 review — <subject>
@@ -121,21 +126,11 @@ Repeat this block per finding. Group by severity:
 **Verdict:** Acked-by-ready | Needs v2 | NAK
 **One-line:** <what the author should walk away with>
 
-## Must-fix
-<email-style blocks for blocking issues>
-
-## Should-fix
-<email-style blocks for nice-to-have>
-
-## Notes / questions
-<open questions for the author, or positive observations>
+- <one line per finding: file:line, what, must-fix or should-fix>
 
 ## Series notes
 <only when reviewing a series — ordering, bisectability, cover letter>
 ```
-
-Keep the per-finding text short. The point is to give the author
-something they can paste straight into `git rebase -i` and address.
 
 ## Rules of engagement
 
