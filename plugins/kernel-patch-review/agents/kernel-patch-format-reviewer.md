@@ -23,8 +23,9 @@ series-level issues (cover letter, ordering, dependencies).
 
 ## Checklist
 
-Walk every item. For each, report PASS / FAIL / N/A with a short citation
-(file:line in the patch or the rule reference).
+Check every item. Report only the ones that fail or warn, each with a
+short citation (file:line in the patch or the rule reference), under
+`## Issues` below; items that pass or do not apply need no line.
 
 ### Subject line
 - `Subject: [PATCH] subsystem: short imperative summary` — present and well-formed
