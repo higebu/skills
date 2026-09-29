@@ -30,8 +30,8 @@ reviewer in Phase 2.
 
 ## Step 2 — Phase 1: four reviewers in parallel
 
-In a SINGLE assistant message, emit FOUR `Agent` tool calls. Do not await
-one before launching the next — they must run concurrently.
+Emit the four `Agent` calls in one assistant message. They are
+independent, so running them together keeps the wait to the slowest one.
 
 ```
 Agent(subagent_type="kernel-patch-format-reviewer",  prompt=<patch + tree path>)
@@ -62,8 +62,7 @@ Agent(subagent_type="kernel-maintainer-reviewer",
               + any series-level observations>)
 ```
 
-This must run AFTER Phase 1 — the maintainer reviewer needs the prior
-reports. Do NOT include this call in the Phase 1 batch.
+It reads the four reports, so it cannot be part of the Phase 1 batch.
 
 ## Step 4: Assemble the final report
 
@@ -91,17 +90,20 @@ Present in this order, top-down by importance:
 ## Per-axis reports
 
 ### Patch format
-<paste kernel-patch-format-reviewer output verbatim>
+<kernel-patch-format-reviewer output>
 
 ### Code quality
-<paste kernel-code-quality-reviewer output verbatim>
+<kernel-code-quality-reviewer output>
 
 ### Coding style
-<paste kernel-coding-style-reviewer output verbatim>
+<kernel-coding-style-reviewer output>
 
 ### Security
-<paste kernel-security-reviewer output verbatim>
+<kernel-security-reviewer output>
 ```
+
+Paste a per-axis report verbatim only when it has findings. For an axis
+that passed with none, one line is enough: `PASS — no findings.`
 
 The maintainer review goes on top because it's the verdict. The four
 narrow reports follow as evidence. De-duplicate "Top must-fix" against
@@ -129,3 +131,6 @@ Do not perform these without asking.
 - The five reviewers can also be invoked individually if the user wants
   just one perspective (`> kernel-security-reviewer this diff`). This skill
   is for the full pipeline.
+- For a trivial patch (a typo, a comment, a one-line constant change) the
+  full fan-out costs more than it finds. Run only the reviewers the change
+  can matter to, and say which ones you skipped and why.

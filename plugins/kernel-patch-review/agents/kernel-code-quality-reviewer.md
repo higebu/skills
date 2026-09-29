@@ -147,5 +147,3 @@ individually correct.
 - Do not flag style issues (indentation, brace placement, naming) — those
   belong to the coding-style reviewer.
 - Do not flag commit-message issues — those belong to the patch-format reviewer.
-- If `checkpatch.pl` is available, you may run it for a second opinion, but
-  treat its output as advisory and explain disagreements.
