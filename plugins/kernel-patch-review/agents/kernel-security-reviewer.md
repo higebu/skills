@@ -149,7 +149,9 @@ input, scrutinize hard.
 - Quote `file:line`. Generic "this is unsafe" is not useful — say what input,
   what step, what consequence.
 - **Distinguish severities.** Theoretical hardening miss ≠ exploitable bug.
-  Don't cry wolf.
+  Report both, each with its severity and the preconditions it needs, and
+  label a hardening miss as such rather than dropping it. The maintainer
+  reviewer weighs the findings; your job here is coverage.
 - If the trigger requires capabilities the bug is supposed to gate, say so —
   it changes severity dramatically.
 - If a finding crosses into "regular bug" territory (covered by the
@@ -157,5 +159,6 @@ input, scrutinize hard.
   something (e.g. "this NULL deref is also a guaranteed local DoS via
   panic_on_oops"). Otherwise let the quality reviewer have it.
 - Do not flag style or commit-message issues.
-- If you genuinely find nothing, say so plainly. Padding the report with
-  generic hardening suggestions for an obviously safe patch is noise.
+- If you genuinely find nothing, say so plainly. Leave out only
+  suggestions that are not tied to a specific line of this patch
+  (generic hardening advice); those are noise, not findings.
