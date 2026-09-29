@@ -50,7 +50,8 @@ The files you will need:
 | `kernel/callstack.md` | Locking / context (process/softirq/IRQ) questions |
 | `kernel/coccinelle.md` | When a Coccinelle pattern naturally fits |
 | `kernel/fixes-tag.md`, `kernel/missing-fixes-tag.md` | Bug-fix patches without a `Fixes:` tag |
-| `kernel/inline-template.md` | Output formatting reference |
+| `kernel/review-one.md` | **Always** — defines the final `FINAL REGRESSIONS FOUND` line |
+| `kernel/inline-template.md` | **Always** — format of `review-inline.txt`, the mailing-list reply |
 | `kernel/subsystem/<other>.md` | Load any further subsystem file whose triggers (in `subsystem.md`) match files the patch touches (e.g. `bpf.md` if the patch touches XDP/BPF, `rcu.md` for RCU work, `mm-*.md` for skb_frag pages, `locking.md` for spinlock/mutex changes, etc.) |
 
 ## Step 1: Resolve the patch
@@ -131,7 +132,7 @@ For SRv6 / `seg6_local.c`-style patches specifically, also confirm:
 - Documentation entry in `Documentation/networking/seg6_*` if the
   series introduces user-facing behavior.
 - Wire-format invariants (Args.Mob.Session field width, Locator |
-  IPv4 DA layout, etc.) match RFC 9433 §6.x and are enforced where
+  IPv4 DA layout, etc.) match RFC 9433 Section 6 and are enforced where
   the SID is built / parsed.
 
 Cross-reference against `kernel/false-positive-guide.md` before
@@ -146,37 +147,25 @@ FINAL REGRESSIONS FOUND: <number>
 
 ## Step 3: Output — netdev-list-shaped review
 
-Produce a single review reply suitable for `Re:`-ing on the netdev
-mailing list. Use the email-style block format from
-`kernel/inline-template.md`:
+The mailing-list reply is the file upstream `review-core.md` asks for,
+`review-inline.txt`, written exactly as `kernel/inline-template.md`
+specifies: plain text, no Markdown, questions rather than verdicts,
+wrapped at 78 columns. Upstream writes it to the current directory;
+create a scratch directory first (`mktemp -d`) and write it there, so
+the kernel tree and `$PROMPTS_DIR` stay untouched. It is the only file
+you create.
 
-```
-On <date>, <author> wrote:
-> <quoted patch hunk that the comment applies to>
-
-<plain-English finding, one paragraph max>
-
-<corrected snippet if applicable, in a fenced block>
-
-<one-sentence "why this matters", optional>
-```
-
-Repeat this block per finding. Group by severity:
+Then reply to the caller with a short local summary. This part is for
+the person running the review, not for the list, so Markdown is fine:
 
 ```
 # netdev review — <subject>
 
 **Verdict:** Acked-by-ready | Needs v2 | NAK
 **One-line:** <what the author should walk away with>
+**Reply file:** <path to review-inline.txt>, or "none (no regressions)"
 
-## Must-fix
-<email-style blocks for blocking issues>
-
-## Should-fix
-<email-style blocks for nice-to-have>
-
-## Notes / questions
-<open questions for the author, or positive observations>
+- <one line per finding: file:line, what, must-fix or should-fix>
 
 ## Series notes
 <only when reviewing a series — bisectability, ordering, cover letter,
@@ -185,8 +174,8 @@ MAINTAINERS / Documentation / selftest coverage>
 FINAL REGRESSIONS FOUND: <number>
 ```
 
-Keep the per-finding text short. The point is to give the author
-something they can paste straight into `git rebase -i` and address.
+The verdict and the must-fix / should-fix split are local additions;
+upstream's own output is `review-inline.txt` and the final count line.
 
 ## Rules of engagement
 
@@ -196,8 +185,9 @@ something they can paste straight into `git rebase -i` and address.
   confirm". Hedging is allowed; fabrication is not.
 - Do not duplicate findings that the upstream `false-positive-guide.md`
   warns against.
-- This agent is read-only. Do not modify the patch, the tree, or any
-  upstream repository.
+- Do not modify the patch, the kernel tree, `$PROMPTS_DIR` or any
+  upstream repository. The only file you write is `review-inline.txt`
+  in the scratch directory from Step 3.
 - Stay scoped to kernel networking conventions. Do not flag iproute2
   userspace issues (matches/strcmp, JSON helpers, print_XXX) — they do
   not apply.
