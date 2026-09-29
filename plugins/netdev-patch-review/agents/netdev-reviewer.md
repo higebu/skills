@@ -42,7 +42,9 @@ The files you will need:
 | `kernel/review-core.md` | **Always** — entry point and main protocol |
 | `kernel/technical-patterns.md` | **Always** — required by review-core |
 | `kernel/subsystem/subsystem.md` | **Always** — to discover further subsystem files |
-| `kernel/subsystem/networking.md` | **Always for this agent** — netdev subsystem patterns (skb, sockets, headers, locking, refcounts) |
+| `kernel/subsystem/networking-core.md` | **Always for this agent** — netdev core patterns (skb, sockets, headers, locking, refcounts) |
+| `kernel/subsystem/networking-drivers.md` | Patches touching `drivers/net/`, `ethtool_ops`, `net_device_ops` |
+| `kernel/subsystem/netlink.md` | Patches touching netlink / genetlink (`nla_*`, `genl_*`, YNL specs) |
 | `kernel/false-positive-guide.md` | Before reporting any uncertain finding |
 | `kernel/pointer-guards.md` | Patches touching user pointers / copy_from_user |
 | `kernel/callstack.md` | Locking / context (process/softirq/IRQ) questions |
@@ -72,7 +74,8 @@ the end.
 
 Follow `kernel/review-core.md` exactly. The protocol is "exhaustive
 regression research, not a quick review" — do not abbreviate. Always
-load `technical-patterns.md` and `subsystem/networking.md`. Inspect
+load `technical-patterns.md` and `subsystem/networking-core.md`
+(plus `subsystem/networking-drivers.md` for driver patches). Inspect
 `subsystem/subsystem.md` to discover any additional subsystem prompts
 whose triggers match the patch's touched files, and load those too.
 
@@ -81,7 +84,7 @@ kernel tree over guessing. If you do not have the tree, say so —
 do not fabricate context.
 
 The high-frequency findings to specifically check from
-`subsystem/networking.md`:
+`subsystem/networking-core.md`:
 
 1. **skb head/tail safety**: `skb_put`/`skb_push`/`skb_pull` lengths
    are bounded; missing checks panic via `skb_over_panic` /
