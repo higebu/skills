@@ -23,10 +23,11 @@ There is no build or test suite; use the checks below.
 - A new plugin also goes into the README skills table and install commands.
 - Write in the language the file already uses (newer skills are Japanese,
   review agents are English).
-- Review agents cite upstream checklists as written instead of
-  paraphrasing them. The kernel/netdev/iproute2 checklists come from
-  `masoncl/review-prompts`; `kernel-patches/review-prompts` is a fork of
-  it, not a replacement.
+- The netdev and iproute2 agents load their checklists from
+  `masoncl/review-prompts` at run time and cite them as written instead
+  of paraphrasing; `kernel-patches/review-prompts` is a fork of it, not a
+  replacement. The kernel-patch-review and frr agents carry their own
+  self-contained checklists.
 
 ## Git and PRs
 
