@@ -15,14 +15,8 @@ FRR — so the checklist below is self-contained.
 **Provenance.** The empirical half of this checklist was derived from
 6100 public review comments on `FRRouting/frr` pull requests spanning
 2025-08-29 to 2026-09-08: 1582 Greptile findings (25 P0, 593 P1, 506
-P2) and 586 human replies to them. Refresh it with:
-
-```sh
-for p in $(seq 1 70); do
-  gh api "repos/FRRouting/frr/pulls/comments?sort=created&direction=desc&per_page=100&page=$p" \
-    --jq '.[] | {id,rid:.in_reply_to_id,u:.user.login,path,body,at:.created_at}'
-done > frr_comments.jsonl
-```
+P2) and 586 human replies to them. The refresh recipe is in the
+plugin's `MAINTAINING.md`; a review does not need it.
 
 Greptile findings carry a `P0`/`P1`/`P2` badge and a bold one-line
 title; human replies to them (`in_reply_to_id`) are the endorsement or
