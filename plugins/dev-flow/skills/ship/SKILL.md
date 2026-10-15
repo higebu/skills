@@ -51,16 +51,30 @@ herdr スキルの既定は「今のタブを分割し、同じ作業ディレ�
 このスキルでは次の構成をユーザーの指定として使う。同じ作業ツリーで並行して
 編集すると衝突するため。
 
-1. `herdr worktree create --branch <branch> --base <base> --no-focus` で
-   作業ツリーを分ける。返った JSON から開始用のペイン ID を読む。予測しない。
-2. そのペインで `herdr agent start <name> --kind claude --pane <id>` する。
-3. 手順 3 の指示を `herdr agent prompt` で送る。
-4. `herdr agent wait <name> --until blocked --until done --timeout <ms>` で待つ。
+1. git で作業ツリーを分ける。置き場所はリポジトリの外にする。
+
+   ```bash
+   git worktree add -b <branch> ../<repo>-<branch-slug> <base>
+   ```
+
+2. 今のワークスペースに、その作業ツリーを開くタブを作る。返った JSON の
+   `.result.root_pane.pane_id` をペイン ID として使う。予測しない。
+
+   ```bash
+   herdr tab create --cwd ../<repo>-<branch-slug> --label <branch-slug> --no-focus
+   ```
+
+3. そのペインで `herdr agent start <name> --kind claude --pane <id>` する。
+4. 手順 3 の指示を `herdr agent prompt` で送る。
+5. `herdr agent wait <name> --until blocked --until done --timeout <ms>` で待つ。
    `--timeout` は必ず付ける。
    - `blocked`: ユーザーに、そのタブを開いて答えるよう伝える。代わりに
      答えない。
-   - `done`: 手順 5 の検収に進む。
+   - `done`: `herdr agent read` で PR の URL と要約を受け取り、ユーザーに
+     伝える。PR が出ていなければ、何で止まったかを読んで伝える。
    - タイムアウト: 再送せず `herdr agent read` で状態を確かめる。
+6. タブと作業ツリーは PR がマージされるまで残す。片付けはユーザーに
+   頼まれてから、`herdr tab close` と `git worktree remove` で行う。
 
 ### 別のクラウドセッション
 
