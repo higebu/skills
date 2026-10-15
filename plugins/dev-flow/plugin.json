@@ -1,0 +1,18 @@
+{
+  "name": "dev-flow",
+  "description": "Delegate implementation to a sub-agent, a herdr tab or another cloud session, then run code-review and ocr before opening the PR",
+  "version": "0.1.0",
+  "author": {
+    "name": "higebu"
+  },
+  "repository": "https://github.com/higebu/skills",
+  "license": "MIT",
+  "keywords": [
+    "workflow",
+    "sub-agent",
+    "herdr",
+    "code-review",
+    "pull-request"
+  ],
+  "skills": "skills/"
+}

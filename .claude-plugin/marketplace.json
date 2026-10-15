@@ -48,6 +48,12 @@
       "description": "Commit messages in kernel changelog style with a mechanical checker, plus SHA-addressed fixup/amend folding and lease-pinned safe push",
       "version": "0.1.0",
       "source": "./plugins/git"
+    },
+    {
+      "name": "dev-flow",
+      "description": "Delegate implementation to a sub-agent, a herdr tab or another cloud session, then run code-review and ocr before opening the PR",
+      "version": "0.1.0",
+      "source": "./plugins/dev-flow"
     }
   ]
 }
