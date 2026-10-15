@@ -13,6 +13,7 @@ Personal skills collection for [Claude Code](https://docs.anthropic.com/en/docs/
 | `ocr` | Set up and run open-code-review (ocr) for diff reviews and full-repo audits |
 | `pr-description` | Write short, self-contained PR titles and bodies in the style of Linux kernel changelogs |
 | `git` | Commit messages in kernel changelog style with a mechanical checker, plus SHA-addressed fixup/amend folding and lease-pinned safe push |
+| `dev-flow` | Delegate implementation to a sub-agent, a herdr tab or another cloud session, then run code-review and ocr before opening the PR |
 
 ## Installation
 
@@ -29,6 +30,7 @@ Personal skills collection for [Claude Code](https://docs.anthropic.com/en/docs/
 /plugin install ocr@higebu-skills
 /plugin install pr-description@higebu-skills
 /plugin install git@higebu-skills
+/plugin install dev-flow@higebu-skills
 ```
 
 **From the terminal:**
@@ -42,6 +44,7 @@ claude plugin install frr-patch-review@higebu-skills
 claude plugin install ocr@higebu-skills
 claude plugin install pr-description@higebu-skills
 claude plugin install git@higebu-skills
+claude plugin install dev-flow@higebu-skills
 ```
 
 Once installed, invoke skills as:
@@ -55,6 +58,7 @@ Once installed, invoke skills as:
 /git:commit-message [--range <base>..HEAD | --last-commit]
 /git:fold fixup <sha> | amend <sha> <msg-file> | all <base> | check <base>
 /git:safe-push [--approved] [--archive <reason>]
+/dev-flow:ship [--finish] [task]
 ```
 
 `iproute2-patch-review`, `netdev-patch-review` and `frr-patch-review` ship
@@ -75,3 +79,12 @@ export OPENCODE_API_KEY=sk-...
 
 Run `/ocr-setup` once to register it as a provider before using
 `/ocr-review` or `/ocr-scan`.
+
+### dev-flow
+
+`dev-flow` calls the `ocr`, `git` and `pr-description` skills, so install
+those too. Delegating to herdr tabs also needs the upstream herdr skill:
+
+```bash
+npx skills add herdrdev/herdr --skill herdr -g
+```
